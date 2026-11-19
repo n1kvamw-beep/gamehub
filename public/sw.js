@@ -1,26 +1,19 @@
-const CACHE = 'gamehub-v1'
-
-self.addEventListener('install', (e) => {
-  e.waitUntil(caches.open(CACHE).then((c) => c.addAll(['/', '/manifest.webmanifest', '/icon.svg'])))
-  self.skipWaiting()
-})
-
-self.addEventListener('activate', (e) => {
-  e.waitUntil(
-    caches.keys().then((keys) => Promise.all(keys.filter((k) => k !== CACHE).map((k) => caches.delete(k))))
-  )
-  self.clients.claim()
-})
-
-self.addEventListener('fetch', (e) => {
-  if (e.request.method !== 'GET' || new URL(e.request.url).origin !== location.origin) return
-  e.respondWith(
-    fetch(e.request)
-      .then((res) => {
-        const copy = res.clone()
-        caches.open(CACHE).then((c) => c.put(e.request, copy))
-        return res
-      })
-      .catch(() => caches.match(e.request))
-  )
-})
+const CACHE = "gamehub-shell-v1";
+const SHELL = ["/", "/index.html", "/manifest.webmanifest", "/icons/gamehub-192.svg", "/icons/gamehub-512.svg"];
+self.addEventListener("install", event => {
+  event.waitUntil(caches.open(CACHE).then(cache => cache.addAll(SHELL)).then(() => self.skipWaiting()));
+});
+self.addEventListener("activate", event => {
+  event.waitUntil(caches.keys().then(keys => Promise.all(keys.filter(key => key !== CACHE).map(key => caches.delete(key)))).then(() => self.clients.claim()));
+});
+self.addEventListener("fetch", event => {
+  const request = event.request;
+  if (request.method !== "GET" || new URL(request.url).origin !== self.location.origin) return;
+  event.respondWith(fetch(request).then(response => {
+    if (response.ok && request.destination !== "document" && !request.url.includes("/@vite/")) {
+      const copy = response.clone();
+      caches.open(CACHE).then(cache => cache.put(request, copy));
+    }
+    return response;
+  }).catch(() => caches.match(request).then(cached => cached || caches.match("/index.html"))));
+});
