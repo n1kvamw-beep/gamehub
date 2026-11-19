@@ -39,3 +39,6 @@ input,textarea,select{font-size:16px}
   .game-card:hover{transform:none}
   .primary-btn:hover{transform:none}
 }
+
+.check-row{display:flex;flex-direction:row;align-items:center;gap:10px}
+.check-row input{width:auto}

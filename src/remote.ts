@@ -7,7 +7,7 @@ const META_KEY = "gamehub:remote-meta";
 
 type Row = {
   id: string; name: string; description: string | null; category: string; genre: string;
-  platform: string; file_path: string; cover_path: string | null; created_at: string;
+  platform: string; file_path: string; cover_path: string | null; is_public: boolean; created_at: string;
 };
 type Meta = { favorite?: boolean; lastPlayed?: number; playCount?: number };
 
@@ -31,7 +31,7 @@ export async function fetchRemoteGames(): Promise<Game[]> {
   if (!supabase) return [];
   const { data, error } = await supabase
     .from("games")
-    .select("id,name,description,category,genre,platform,file_path,cover_path,created_at")
+    .select("id,name,description,category,genre,platform,file_path,cover_path,is_public,created_at")
     .order("created_at", { ascending: false });
   if (error) throw new Error(error.message);
   const meta = readMeta();
@@ -49,7 +49,8 @@ export async function fetchRemoteGames(): Promise<Game[]> {
     favorite: !!meta[r.id]?.favorite,
     lastPlayed: meta[r.id]?.lastPlayed,
     playCount: meta[r.id]?.playCount ?? 0,
-    remote: { filePath: r.file_path },
+    isPublic: r.is_public,
+    remote: { filePath: r.file_path, coverPath: r.cover_path },
   }));
 }
 
