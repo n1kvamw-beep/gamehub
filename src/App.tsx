@@ -1,11 +1,12 @@
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState, type FormEvent } from "react";
 import {
   Gamepad2, Search, Plus, Library, Heart, Clock3, Settings, Menu, X, Upload,
   Play, Maximize, Minimize, RotateCcw, ArrowLeft, Trash2, Pencil, Star,
-  FolderOpen, Github, Link as LinkIcon, Gamepad, Sparkles, AlertCircle, CheckCircle2, Download
+  FolderOpen, Github, Link as LinkIcon, Gamepad, Sparkles, AlertCircle, CheckCircle2, Download, LogIn, LogOut
 } from "lucide-react";
 import { db } from "./db";
 import { filesFromUpload, makeGame, makePlayableDocument } from "./importer";
+import { signIn, signUp, signOut, loadUser, onAuth, type AuthUser } from "./auth";
 import { fetchRemoteGames, loadRemoteGameFiles, setRemoteMeta } from "./remote";
 import type { Game, GameFile } from "./types";
 
@@ -36,6 +37,13 @@ export default function App() {
   const [importMode, setImportMode] = useState<"files" | "url" | "github">("files");
   const [installPrompt, setInstallPrompt] = useState<InstallPromptEvent | null>(null);
   const [isStandalone, setIsStandalone] = useState(false);
+  const [user, setUser] = useState<AuthUser>(null);
+  const [authOpen, setAuthOpen] = useState(false);
+  const [authMode, setAuthMode] = useState<"login" | "signup">("login");
+  const [authName, setAuthName] = useState("");
+  const [authPass, setAuthPass] = useState("");
+  const [authBusy, setAuthBusy] = useState(false);
+  const [authError, setAuthError] = useState("");
   const frame = useRef<HTMLIFrameElement>(null);
   const fileInput = useRef<HTMLInputElement>(null);
   const folderInput = useRef<HTMLInputElement>(null);
@@ -48,6 +56,22 @@ export default function App() {
     setGames([...online, ...local]);
   }
   useEffect(() => { refresh().catch(() => setError("Não foi possível abrir a biblioteca local.")); }, []);
+  useEffect(() => {
+    const run = () => { loadUser().then(setUser).catch(() => setUser(null)); };
+    run();
+    return onAuth(run);
+  }, []);
+  function openAuth() { setAuthName(""); setAuthPass(""); setAuthError(""); setAuthMode("login"); setAuthOpen(true); }
+  async function submitAuth(event: FormEvent) {
+    event.preventDefault();
+    setAuthBusy(true); setAuthError("");
+    try {
+      if (authMode === "login") await signIn(authName, authPass);
+      else await signUp(authName, authPass);
+      setAuthOpen(false); setAuthPass("");
+    } catch (e) { setAuthError(e instanceof Error ? e.message : "Não foi possível entrar."); }
+    finally { setAuthBusy(false); }
+  }
   useEffect(() => {
     setIsStandalone(window.matchMedia("(display-mode: standalone)").matches || (navigator as Navigator & { standalone?: boolean }).standalone === true);
     const onInstall = (event: Event) => { event.preventDefault(); setInstallPrompt(event as InstallPromptEvent); };
@@ -209,7 +233,7 @@ export default function App() {
       <div className="brand"><div className="brand-mark"><Gamepad2 size={23}/></div><span>Game<span>Hub</span></span><button className="mobile-close icon-btn" onClick={() => setMobileNav(false)}><X/></button></div>
       <div className="side-label">MENU PRINCIPAL</div>
       <nav>{nav.map(n => <button key={n.id} className={`nav-item ${view === n.id ? "active" : ""}`} onClick={() => {setView(n.id);setSelected(null);setMobileNav(false);}}><n.icon size={18}/>{n.label}{n.id === "library" && <span className="nav-count">{games.length}</span>}</button>)}</nav>
-      <div className="sidebar-bottom"><div className="storage-card"><div className="storage-icon"><FolderOpen size={18}/></div><div><strong>Biblioteca local</strong><small>Guardada neste dispositivo</small></div><CheckCircle2 size={15} className="green"/></div><div className="profile"><div className="avatar">G</div><div><strong>GameHub Player</strong><small>Modo pessoal</small></div><Settings size={17}/></div></div>
+      <div className="sidebar-bottom"><div className="storage-card"><div className="storage-icon"><FolderOpen size={18}/></div><div><strong>Biblioteca local</strong><small>Guardada neste dispositivo</small></div><CheckCircle2 size={15} className="green"/></div><div className="profile"><div className="avatar">{user ? user.username.slice(0, 1).toUpperCase() : "G"}</div><div><strong>{user ? user.username : "Visitante"}</strong><small>{user ? (user.role === "admin" ? "Administrador" : "Utilizador") : "Sem sessão"}</small></div>{user ? <button className="icon-btn" title="Sair" onClick={() => { signOut(); }}><LogOut size={17}/></button> : <button className="icon-btn" title="Entrar" onClick={openAuth}><LogIn size={17}/></button>}</div></div>
     </aside>
     {mobileNav && <div className="scrim" onClick={() => setMobileNav(false)}/>}
     <main className="main-area">
@@ -230,6 +254,14 @@ export default function App() {
       {error && <div className="toast error"><AlertCircle size={17}/>{error}<button onClick={()=>setError("")}><X size={15}/></button></div>}
       {notice && <div className="toast success"><CheckCircle2 size={17}/>{notice}</div>}
     </main>
+    {authOpen && <div className="modal-backdrop" onMouseDown={e=>{if(e.target===e.currentTarget)setAuthOpen(false)}}><div className="modal">
+      <div className="modal-head"><div><div className="eyebrow">{authMode === "login" ? "ÁREA DE MEMBROS" : "NOVA CONTA"}</div><h2>{authMode === "login" ? "Entrar" : "Criar conta"}</h2></div><button className="icon-btn" onClick={()=>setAuthOpen(false)}><X/></button></div>
+      <form onSubmit={submitAuth}>
+        <div className="form-grid"><label className="full">Utilizador<input value={authName} onChange={e=>setAuthName(e.target.value)} autoComplete="username" placeholder="o_teu_nome"/></label><label className="full">Senha<input type="password" value={authPass} onChange={e=>setAuthPass(e.target.value)} autoComplete={authMode === "login" ? "current-password" : "new-password"} placeholder="••••••••"/></label></div>
+        {authError && <div className="form-error"><AlertCircle size={15}/>{authError}</div>}
+        <div className="modal-footer"><button type="button" className="secondary-btn" onClick={()=>{setAuthMode(authMode === "login" ? "signup" : "login");setAuthError("");}}>{authMode === "login" ? "Criar conta" : "Já tenho conta"}</button><button type="submit" className="primary-btn" disabled={authBusy || !authName.trim() || !authPass}>{authBusy ? "A aguardar..." : authMode === "login" ? "Entrar" : "Criar conta"}</button></div>
+      </form>
+    </div></div>}
     {modal && <div className="modal-backdrop" onMouseDown={e=>{if(e.target===e.currentTarget)setModal(false)}}><div className="modal">
       <div className="modal-head"><div><div className="eyebrow">{editing ? "PERSONALIZAR" : "EXPANDIR A COLEÇÃO"}</div><h2>{editing ? "Editar jogo" : "Adicionar novo jogo"}</h2></div><button className="icon-btn" onClick={()=>setModal(false)}><X/></button></div>
       {!editing && <div className="import-tabs"><button className={importMode==="files"?"selected":""} onClick={()=>setImportMode("files")}><Upload size={16}/>Ficheiros</button><button className={importMode==="url"?"selected":""} onClick={()=>setImportMode("url")}><LinkIcon size={16}/>URL</button><button className={importMode==="github"?"selected":""} onClick={()=>setImportMode("github")}><Github size={16}/>GitHub</button></div>}
