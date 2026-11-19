@@ -31,6 +31,7 @@ function validate(files: GameFile[]) {
   if (!entry) throw new Error("Não foi encontrado um ficheiro HTML de entrada (por exemplo, index.html).");
   return entry.path;
 }
+export function entryOf(files: GameFile[]) { return validate(files); }
 export async function filesFromUpload(fileList: FileList | File[]): Promise<GameFile[]> {
   const files: GameFile[] = [];
   for (const file of Array.from(fileList)) {

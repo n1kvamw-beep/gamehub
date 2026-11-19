@@ -6,6 +6,7 @@ import {
 } from "lucide-react";
 import { db } from "./db";
 import { filesFromUpload, makeGame, makePlayableDocument } from "./importer";
+import { fetchRemoteGames, loadRemoteGameFiles, setRemoteMeta } from "./remote";
 import type { Game, GameFile } from "./types";
 
 type View = "home" | "library" | "favorites" | "recent" | "detail" | "player";
@@ -40,7 +41,12 @@ export default function App() {
   const folderInput = useRef<HTMLInputElement>(null);
   const coverInput = useRef<HTMLInputElement>(null);
 
-  async function refresh() { setGames(await db.games.orderBy("addedAt").reverse().toArray()); }
+  async function refresh() {
+    const local = await db.games.orderBy("addedAt").reverse().toArray();
+    let online: Game[] = [];
+    try { online = await fetchRemoteGames(); } catch { setError("Não foi possível carregar os jogos online."); }
+    setGames([...online, ...local]);
+  }
   useEffect(() => { refresh().catch(() => setError("Não foi possível abrir a biblioteca local.")); }, []);
   useEffect(() => {
     setIsStandalone(window.matchMedia("(display-mode: standalone)").matches || (navigator as Navigator & { standalone?: boolean }).standalone === true);
@@ -88,6 +94,7 @@ export default function App() {
     setSourceUrl(""); setGithubUrl(""); setModal(true);
   }
   function openEdit(game: Game) {
+    if (game.remote) return setError("A edição de jogos online chega com o painel de admin (Fase 3).");
     setSelected(game); setForm({ name: game.name, description: game.description, category: game.category, genre: game.genre, platform: game.platform });
     setPendingFiles(game.files); setCover(game.cover || ""); setEditing(true); setError(""); setModal(true);
   }
@@ -147,8 +154,13 @@ export default function App() {
     } catch (e) { setError(e instanceof Error ? e.message : "Não foi possível guardar o jogo."); }
     finally { setBusy(false); }
   }
-  async function toggleFavorite(game: Game) { await db.games.update(game.id, { favorite: !game.favorite }); await refresh(); }
+  async function toggleFavorite(game: Game) {
+    if (game.remote) setRemoteMeta(game.id, { favorite: !game.favorite });
+    else await db.games.update(game.id, { favorite: !game.favorite });
+    await refresh();
+  }
   async function deleteGame(game: Game) {
+    if (game.remote) return setError("Apagar jogos online chega com o painel de admin (Fase 3).");
     if (!confirm(`Eliminar "${game.name}" da biblioteca? Esta ação não pode ser desfeita.`)) return;
     await db.games.delete(game.id); if (selected?.id === game.id) { setSelected(null); setView("library"); } await refresh();
   }
@@ -157,9 +169,11 @@ export default function App() {
     try {
       if (playUrl) URL.revokeObjectURL(playUrl);
       blobUrls.forEach(URL.revokeObjectURL);
-      const result = await makePlayableDocument(game);
+      const ready = await loadRemoteGameFiles(game);
+      const result = await makePlayableDocument(ready);
       setPlayUrl(result.url); setBlobUrls(result.urls); setSelected(game); setView("player");
-      await db.games.update(game.id, { lastPlayed: Date.now(), playCount: game.playCount + 1 });
+      if (game.remote) setRemoteMeta(game.id, { lastPlayed: Date.now(), playCount: game.playCount + 1 });
+      else await db.games.update(game.id, { lastPlayed: Date.now(), playCount: game.playCount + 1 });
       await refresh();
     } catch (e) { setError(e instanceof Error ? e.message : "Não foi possível iniciar o jogo."); }
     finally { setBusy(false); }
