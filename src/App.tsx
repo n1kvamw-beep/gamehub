@@ -7,7 +7,7 @@ import {
 import { filesFromUpload, makePlayableDocument } from "./importer";
 import { saveRemoteGame, deleteRemoteGame, downloadRemoteGame } from "./admin";
 import { signIn, signUp, signOut, loadUser, onAuth, type AuthUser } from "./auth";
-import { fetchRemoteGames, loadRemoteGameFiles, setRemoteMeta } from "./remote";
+import { fetchRemoteGames, loadRemoteGameFiles, setRemoteMeta, setFavorite } from "./remote";
 import type { Game, GameFile } from "./types";
 
 type View = "home" | "library" | "favorites" | "recent" | "detail" | "player" | "settings";
@@ -178,7 +178,9 @@ export default function App() {
     finally { setBusy(false); }
   }
   async function toggleFavorite(game: Game) {
-    setRemoteMeta(game.id, { favorite: !game.favorite });
+    if (!user) { openAuth(); setAuthError("Entra na tua conta para guardar favoritos."); return; }
+    try { await setFavorite(game.id, !game.favorite); }
+    catch (e) { setError(e instanceof Error ? e.message : "Não foi possível guardar o favorito."); return; }
     const fresh = await refresh();
     if (selected?.id === game.id) setSelected(fresh.find(g => g.id === game.id) ?? selected);
   }

@@ -14,7 +14,7 @@ type Meta = { favorite?: boolean; lastPlayed?: number; playCount?: number };
 function readMeta(): Record<string, Meta> {
   try { return JSON.parse(localStorage.getItem(META_KEY) || "{}"); } catch { return {}; }
 }
-// Favoritos e "jogado recentemente" dos jogos online ficam neste navegador até haver contas (Fase 5).
+// "Jogado recentemente" e contagem de partidas ficam neste navegador.
 export function setRemoteMeta(id: string, patch: Meta) {
   try {
     const all = readMeta();
@@ -27,6 +27,30 @@ function publicUrl(path: string) {
   return supabase ? supabase.storage.from(BUCKET).getPublicUrl(path).data.publicUrl : "";
 }
 
+async function currentUserId(): Promise<string | null> {
+  if (!supabase) return null;
+  const { data } = await supabase.auth.getSession();
+  return data.session?.user.id ?? null;
+}
+
+// Favoritos guardados na conta (tabela favorites, protegida por RLS: cada pessoa só vê os seus).
+async function fetchFavoriteIds(): Promise<Set<string>> {
+  if (!supabase || !(await currentUserId())) return new Set();
+  const { data, error } = await supabase.from("favorites").select("game_id");
+  if (error) return new Set();
+  return new Set(((data ?? []) as { game_id: string }[]).map(r => r.game_id));
+}
+
+export async function setFavorite(gameId: string, on: boolean) {
+  if (!supabase) throw new Error("O Supabase não está configurado.");
+  const userId = await currentUserId();
+  if (!userId) throw new Error("Entra na tua conta para guardar favoritos.");
+  const { error } = on
+    ? await supabase.from("favorites").insert({ user_id: userId, game_id: gameId })
+    : await supabase.from("favorites").delete().eq("user_id", userId).eq("game_id", gameId);
+  if (error) throw new Error(error.message);
+}
+
 export async function fetchRemoteGames(): Promise<Game[]> {
   if (!supabase) return [];
   const { data, error } = await supabase
@@ -35,6 +59,7 @@ export async function fetchRemoteGames(): Promise<Game[]> {
     .order("created_at", { ascending: false });
   if (error) throw new Error(error.message);
   const meta = readMeta();
+  const favs = await fetchFavoriteIds();
   return ((data ?? []) as Row[]).map(r => ({
     id: r.id,
     name: r.name,
@@ -46,7 +71,7 @@ export async function fetchRemoteGames(): Promise<Game[]> {
     files: [],
     entry: "",
     addedAt: new Date(r.created_at).getTime(),
-    favorite: !!meta[r.id]?.favorite,
+    favorite: favs.has(r.id),
     lastPlayed: meta[r.id]?.lastPlayed,
     playCount: meta[r.id]?.playCount ?? 0,
     isPublic: r.is_public,
