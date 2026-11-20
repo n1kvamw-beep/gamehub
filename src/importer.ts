@@ -2,7 +2,7 @@ import { unzipSync } from "fflate";
 import type { Game, GameFile } from "./types";
 
 const MAX_FILES = 1500;
-const MAX_TOTAL = 300 * 1024 * 1024;
+const MAX_TOTAL = 50 * 1024 * 1024;
 
 function safePath(path: string) {
   const normalized = path.replace(/\\/g, "/").replace(/^\/+/, "");
@@ -24,7 +24,7 @@ function validate(files: GameFile[]) {
   if (!files.length) throw new Error("Não foram encontrados ficheiros no jogo.");
   if (files.length > MAX_FILES) throw new Error("O jogo excede o limite de 1500 ficheiros.");
   const total = files.reduce((n, f) => n + f.blob.size, 0);
-  if (total > MAX_TOTAL) throw new Error("O jogo excede o limite de 300 MB.");
+  if (total > MAX_TOTAL) throw new Error("O jogo excede o limite de 50 MB.");
   const entry = files.find(f => f.path.toLowerCase() === "index.html") ||
     files.find(f => f.path.toLowerCase().endsWith("/index.html")) ||
     files.find(f => /\.html?$/i.test(f.path));
