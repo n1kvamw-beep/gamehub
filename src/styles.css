@@ -70,3 +70,12 @@ input,textarea,select{font-size:16px}
 .rank-stats{display:flex;gap:14px;color:#9aa0b6;font-size:11px;flex-wrap:wrap;justify-content:flex-end}
 .rank-stats span{display:flex;align-items:center;gap:5px}
 @media(max-width:600px){.rank-stats{display:none}}
+.profile-head{display:flex;align-items:center;gap:18px;flex-wrap:wrap;margin-bottom:28px}
+.avatar.big{width:72px;height:72px;font-size:28px;flex-shrink:0}
+.profile-info{flex:1;min-width:180px}
+.profile-info h1{margin:0 0 8px;font-size:24px;display:flex;align-items:center;gap:10px}
+.badge{display:inline-flex;align-items:center;gap:4px;font-size:10px;background:#2a2450;color:#b9acff;border-radius:99px;padding:3px 8px}
+.profile-counts{display:flex;gap:18px;color:#9aa0b6;font-size:12px}
+.profile-counts strong{color:#eff0f7}
+.link-name{background:none;border:0;color:inherit;font:inherit;font-weight:700;padding:0;cursor:pointer}
+.link-name:hover{color:#a99aff}

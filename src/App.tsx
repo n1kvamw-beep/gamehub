@@ -2,24 +2,26 @@ import { useEffect, useMemo, useRef, useState, type FormEvent } from "react";
 import {
   Gamepad2, Search, Plus, Library, Heart, Clock3, Settings, Menu, X, Upload,
   Play, Maximize, Minimize, RotateCcw, ArrowLeft, Trash2, Pencil, Star,
-  FolderOpen, Github, Link as LinkIcon, Gamepad, Sparkles, AlertCircle, CheckCircle2, Download, LogIn, LogOut
+  FolderOpen, Github, Link as LinkIcon, Gamepad, Sparkles, AlertCircle, CheckCircle2, Download, LogIn, LogOut, UserRound
 } from "lucide-react";
 import { filesFromUpload, makePlayableDocument } from "./importer";
 import GameSocial from "./Social";
 import RankingPanel from "./Ranking";
+import ProfilePanel from "./Profile";
 import { registerPlay } from "./social";
 import { saveRemoteGame, deleteRemoteGame, downloadRemoteGame } from "./admin";
 import { signIn, signUp, signOut, loadUser, onAuth, type AuthUser } from "./auth";
 import { fetchRemoteGames, loadRemoteGameFiles, setRemoteMeta, setFavorite } from "./remote";
 import type { Game, GameFile } from "./types";
 
-type View = "home" | "library" | "favorites" | "recent" | "detail" | "player" | "settings" | "ranking";
+type View = "home" | "library" | "favorites" | "recent" | "detail" | "player" | "settings" | "ranking" | "profile";
 type InstallPromptEvent = Event & { prompt: () => Promise<void>; userChoice: Promise<{ outcome: "accepted" | "dismissed" }> };
 const blank = { name: "", description: "", category: "Indie", genre: "Ação", platform: "HTML5", isPublic: true };
 export default function App() {
   const [games, setGames] = useState<Game[]>([]);
   const [view, setView] = useState<View>("home");
   const [selected, setSelected] = useState<Game | null>(null);
+  const [profileName, setProfileName] = useState("");
   const [query, setQuery] = useState("");
   const [sort, setSort] = useState("newest");
   const [genre, setGenre] = useState("Todos");
@@ -231,6 +233,7 @@ export default function App() {
     { id:"favorites", label:"Favoritos", icon:Heart }, { id:"recent", label:"Recentes", icon:Clock3 },
     { id:"ranking", label:"Ranking", icon:Star }
   ];
+  if (user) navItems.push({ id:"profile", label:"O meu perfil", icon:UserRound });
   if (isAdmin) navItems.push({ id:"settings", label:"Configurações", icon:Settings });
 
   if (view === "player" && selected) return <main className="player-page">
@@ -250,7 +253,7 @@ export default function App() {
     <aside className={`sidebar ${mobileNav ? "open" : ""}`}>
       <div className="brand"><div className="brand-mark"><Gamepad2 size={23}/></div><span>Game<span>Hub</span></span><button className="mobile-close icon-btn" onClick={() => setMobileNav(false)}><X/></button></div>
       <div className="side-label">MENU PRINCIPAL</div>
-      <nav>{navItems.map(n => <button key={n.id} className={`nav-item ${view === n.id ? "active" : ""}`} onClick={() => {setView(n.id);setSelected(null);setMobileNav(false);}}><n.icon size={18}/>{n.label}{n.id === "library" && <span className="nav-count">{games.length}</span>}</button>)}</nav>
+      <nav>{navItems.map(n => <button key={n.id} className={`nav-item ${view === n.id ? "active" : ""}`} onClick={() => {if (n.id === "profile" && user) setProfileName(user.username);setView(n.id);setSelected(null);setMobileNav(false);}}><n.icon size={18}/>{n.label}{n.id === "library" && <span className="nav-count">{games.length}</span>}</button>)}</nav>
       <div className="sidebar-bottom"><div className="storage-card"><div className="storage-icon"><FolderOpen size={18}/></div><div><strong>Biblioteca online</strong><small>Guardada no Supabase</small></div><CheckCircle2 size={15} className="green"/></div><div className="profile"><div className="avatar">{user ? user.username.slice(0, 1).toUpperCase() : "G"}</div><div><strong>{user ? user.username : "Visitante"}</strong><small>{user ? (user.role === "admin" ? "Administrador" : "Utilizador") : "Sem sessão"}</small></div>{user ? <button className="icon-btn" title="Sair" onClick={() => { signOut(); }}><LogOut size={17}/></button> : <button className="icon-btn" title="Entrar" onClick={openAuth}><LogIn size={17}/></button>}</div></div>
     </aside>
     {mobileNav && <div className="scrim" onClick={() => setMobileNav(false)}/>}
@@ -262,15 +265,16 @@ export default function App() {
           <div className="detail-cover">{selected.cover ? <img src={selected.cover}/> : <div className="cover-placeholder large"><Gamepad2 size={55}/></div>}</div>
           <div className="detail-info"><div className="eyebrow">{selected.category} <span>•</span> {selected.genre}{isAdmin && selected.isPublic === false && <> <span>•</span> Privado</>}</div><h1>{selected.name}</h1><p>{selected.description || "Sem descrição disponível."}</p><div className="game-meta"><span><Gamepad size={15}/>{selected.platform}</span><span><Clock3 size={15}/>{new Date(selected.addedAt).toLocaleDateString("pt-PT")}</span><span><Play size={15}/>{selected.stats?.plays ?? selected.playCount} partidas</span>{selected.stats?.avg != null && <span><Star size={15}/>{selected.stats.avg.toFixed(1)} ({selected.stats.votes})</span>}</div><div className="detail-buttons"><button className="primary-btn play-large" onClick={() => play(selected)} disabled={busy}><Play size={20} fill="currentColor"/>JOGAR AGORA</button><button className={`secondary-btn ${selected.favorite ? "is-fav" : ""}`} onClick={() => toggleFavorite(selected)}><Heart size={18} fill={selected.favorite ? "currentColor" : "none"}/></button>{isAdmin && <><button className="secondary-btn" title="Editar" onClick={() => openEdit(selected)}><Pencil size={18}/></button><button className="secondary-btn" title="Descarregar jogo" onClick={() => downloadGame(selected)}><Download size={18}/></button><button className="secondary-btn danger" title="Eliminar" onClick={() => deleteGame(selected)}><Trash2 size={18}/></button></>}</div></div>
         </div><div className="section-heading"><div><h2>Informações</h2><p>Detalhes guardados na tua biblioteca local.</p></div></div><div className="info-panel"><div><small>PLATAFORMA</small><strong>{selected.platform}</strong></div><div><small>CATEGORIA</small><strong>{selected.category}</strong></div><div><small>GÉNERO</small><strong>{selected.genre}</strong></div><div><small>ADICIONADO EM</small><strong>{new Date(selected.addedAt).toLocaleDateString("pt-PT")}</strong></div></div>
-        <GameSocial game={selected} user={user} onNeedLogin={() => { openAuth(); setAuthError("Entra na tua conta para participar."); }} onChanged={() => { refresh().then(fresh => setSelected(s => s ? (fresh.find(g => g.id === s.id) ?? s) : s)); }}/>
+        <GameSocial onOpenProfile={n => { setProfileName(n); setView("profile"); setSelected(null); }} game={selected} user={user} onNeedLogin={() => { openAuth(); setAuthError("Entra na tua conta para participar."); }} onChanged={() => { refresh().then(fresh => setSelected(s => s ? (fresh.find(g => g.id === s.id) ?? s) : s)); }}/>
       </section> : <section className="content">
         {view === "home" && <><div className="welcome-banner"><div className="welcome-copy"><div className="eyebrow"><Sparkles size={14}/> A TUA COLEÇÃO PESSOAL</div><h1>Os teus jogos.<br/><span>O teu universo.</span></h1><p>Importa os teus projetos e joga diretamente no navegador.</p>{isAdmin && <button className="primary-btn" onClick={openAdd}><Plus size={18}/>Adicionar primeiro jogo</button>}</div><div className="banner-art"><div className="orbit orbit-one"/><div className="orbit orbit-two"/><div className="glow-controller"><Gamepad2 size={105}/></div><div className="float-chip chip-one"><Play size={14}/> PLAY</div><div className="float-chip chip-two"><Star size={14}/> YOUR GAMES</div></div></div>
           <div className="stats-row"><div className="stat-card"><div className="stat-icon purple"><Library/></div><div><strong>{games.length}</strong><small>Jogos na biblioteca</small></div></div><div className="stat-card"><div className="stat-icon pink"><Heart/></div><div><strong>{games.filter(g=>g.favorite).length}</strong><small>Favoritos</small></div></div><div className="stat-card"><div className="stat-icon blue"><Play/></div><div><strong>{games.reduce((n,g)=>n+g.playCount,0)}</strong><small>Partidas iniciadas</small></div></div></div>
           {games.length === 0 ? <div className="empty-state"><div className="empty-icon"><Gamepad2 size={35}/></div><h2>{isAdmin ? "A biblioteca começa aqui" : "Ainda não há jogos"}</h2><p>{isAdmin ? "Adiciona um jogo HTML ou um ZIP. Fica guardado no Supabase e aparece para toda a gente." : "Volta mais tarde: ainda não foram publicados jogos."}</p>{isAdmin && <button className="primary-btn" onClick={openAdd}><Upload size={17}/>Importar um jogo</button>}</div> : <><GameSection title="Adicionados recentemente" subtitle="Os últimos jogos que chegaram à tua coleção." games={recent} onOpen={g=>{setSelected(g);setView("detail")}} onFavorite={toggleFavorite}/>{favorites.length>0 && <GameSection title="Os teus favoritos" subtitle="Os jogos que marcaste como especiais." games={favorites} onOpen={g=>{setSelected(g);setView("detail")}} onFavorite={toggleFavorite}/>}<GameSection title="Toda a biblioteca" subtitle="Continua a tua aventura." games={filtered.slice(0,8)} onOpen={g=>{setSelected(g);setView("detail")}} onFavorite={toggleFavorite}/></>}
         </>}
+        {view === "profile" && profileName && <ProfilePanel username={profileName} user={user} onNeedLogin={() => { openAuth(); setAuthError("Entra na tua conta para participar."); }} onOpenGame={id => { const g = games.find(x => x.id === id); if (g) { setSelected(g); setView("detail"); } }}/>}
         {view === "ranking" && <RankingPanel games={games} onOpen={g => { setSelected(g); setView("detail"); }}/>}
         {view === "settings" && <SettingsPanel games={games} user={user} onSignOut={() => { signOut(); }}/>}
-        {view !== "home" && view !== "settings" && view !== "ranking" && <><div className="page-heading"><div><div className="eyebrow">A TUA COLEÇÃO</div><h1>{title}</h1><p>{filtered.length} {filtered.length === 1 ? "jogo encontrado" : "jogos encontrados"}</p></div>{isAdmin && <button className="primary-btn" onClick={openAdd}><Plus size={18}/>Adicionar jogo</button>}</div><div className="filter-row"><label className="filter-select">Género <select value={genre} onChange={e=>setGenre(e.target.value)}><option>Todos</option>{["Ação","Aventura","Corrida","Puzzle","Estratégia","RPG","Simulação","Indie","Outro"].map(g=><option key={g}>{g}</option>)}</select></label><label className="filter-select">Ordenar por <select value={sort} onChange={e=>setSort(e.target.value)}><option value="newest">Mais recentes</option><option value="oldest">Mais antigos</option><option value="name">Nome (A–Z)</option></select></label></div><div className="game-grid">{filtered.map(g=><GameCard key={g.id} game={g} onOpen={()=>{setSelected(g);setView("detail")}} onFavorite={()=>toggleFavorite(g)}/>)}</div>{filtered.length===0 && <div className="empty-state compact-empty"><div className="empty-icon"><Search/></div><h2>Nenhum jogo encontrado</h2><p>Experimenta alterar a pesquisa ou os filtros.</p><button className="secondary-btn" onClick={()=>{setQuery("");setGenre("Todos")}}>Limpar filtros</button></div>}</>}
+        {view !== "home" && view !== "settings" && view !== "ranking" && view !== "profile" && <><div className="page-heading"><div><div className="eyebrow">A TUA COLEÇÃO</div><h1>{title}</h1><p>{filtered.length} {filtered.length === 1 ? "jogo encontrado" : "jogos encontrados"}</p></div>{isAdmin && <button className="primary-btn" onClick={openAdd}><Plus size={18}/>Adicionar jogo</button>}</div><div className="filter-row"><label className="filter-select">Género <select value={genre} onChange={e=>setGenre(e.target.value)}><option>Todos</option>{["Ação","Aventura","Corrida","Puzzle","Estratégia","RPG","Simulação","Indie","Outro"].map(g=><option key={g}>{g}</option>)}</select></label><label className="filter-select">Ordenar por <select value={sort} onChange={e=>setSort(e.target.value)}><option value="newest">Mais recentes</option><option value="oldest">Mais antigos</option><option value="name">Nome (A–Z)</option></select></label></div><div className="game-grid">{filtered.map(g=><GameCard key={g.id} game={g} onOpen={()=>{setSelected(g);setView("detail")}} onFavorite={()=>toggleFavorite(g)}/>)}</div>{filtered.length===0 && <div className="empty-state compact-empty"><div className="empty-icon"><Search/></div><h2>Nenhum jogo encontrado</h2><p>Experimenta alterar a pesquisa ou os filtros.</p><button className="secondary-btn" onClick={()=>{setQuery("");setGenre("Todos")}}>Limpar filtros</button></div>}</>}
       </section>}
       {error && <div className="toast error"><AlertCircle size={17}/>{error}<button onClick={()=>setError("")}><X size={15}/></button></div>}
       {notice && <div className="toast success"><CheckCircle2 size={17}/>{notice}</div>}

@@ -4,9 +4,9 @@ import type { Game } from "./types";
 import type { AuthUser } from "./auth";
 import { fetchComments, addComment, deleteComment, fetchMyRating, setRating, type Comment } from "./social";
 
-type Props = { game: Game; user: AuthUser; onNeedLogin: () => void; onChanged: () => void };
+type Props = { game: Game; user: AuthUser; onNeedLogin: () => void; onChanged: () => void; onOpenProfile: (name: string) => void };
 
-export default function GameSocial({ game, user, onNeedLogin, onChanged }: Props) {
+export default function GameSocial({ game, user, onNeedLogin, onChanged, onOpenProfile }: Props) {
   const [comments, setComments] = useState<Comment[]>([]);
   const [mine, setMine] = useState(0);
   const [hover, setHover] = useState(0);
@@ -57,7 +57,7 @@ export default function GameSocial({ game, user, onNeedLogin, onChanged }: Props
     <div className="comment-list">
       {comments.map(c => <div className="comment" key={c.id}>
         <div className="avatar small">{c.username.slice(0, 1).toUpperCase()}</div>
-        <div><strong>{c.username}</strong> <small>{new Date(c.created_at).toLocaleDateString("pt-PT")}</small><p>{c.body}</p></div>
+        <div><button className="link-name" onClick={() => onOpenProfile(c.username)}>{c.username}</button> <small>{new Date(c.created_at).toLocaleDateString("pt-PT")}</small><p>{c.body}</p></div>
         {(user?.id === c.user_id || user?.role === "admin") && <button className="icon-btn" title="Apagar" onClick={() => remove(c)}><Trash2 size={15}/></button>}
       </div>)}
     </div>
