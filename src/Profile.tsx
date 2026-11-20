@@ -33,7 +33,7 @@ export default function ProfilePanel({ username, user, onNeedLogin, onOpenGame }
         <h1>{p.username} {p.role === "admin" && <span className="badge"><ShieldCheck size={13}/>Admin</span>}</h1>
         <div className="profile-counts"><span><strong>{p.followers}</strong> seguidores</span><span><strong>{p.following}</strong> a seguir</span><span><strong>{p.games.length}</strong> jogos</span></div>
       </div>
-      {!isMe && <button className={p.iFollow ? "ghost-btn" : "primary-btn"} onClick={toggle}>{p.iFollow ? <><UserCheck size={16}/>A seguir</> : <><UserPlus size={16}/>Seguir</>}</button>}
+      {!isMe && <button className={p.iFollow ? "secondary-btn" : "primary-btn"} onClick={toggle}>{p.iFollow ? <><UserCheck size={16}/>A seguir</> : <><UserPlus size={16}/>Seguir</>}</button>}
     </div>
     {error && <div className="form-error"><span>{error}</span></div>}
     <div className="section-heading"><div><h2>Jogos jogados</h2><p>Os jogos públicos que {isMe ? "jogaste" : p.username + " jogou"}.</p></div></div>

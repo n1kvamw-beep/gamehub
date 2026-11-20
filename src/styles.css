@@ -79,3 +79,28 @@ input,textarea,select{font-size:16px}
 .profile-counts strong{color:#eff0f7}
 .link-name{background:none;border:0;color:inherit;font:inherit;font-weight:700;padding:0;cursor:pointer}
 .link-name:hover{color:#a99aff}
+
+/* Alinhamento de botões e blocos (telemóvel e PC) */
+.primary-btn,.secondary-btn{min-height:40px;line-height:1}
+.content{max-width:1320px;margin-inline:auto}
+.page-heading{flex-wrap:wrap;gap:12px}
+.detail-hero{align-items:stretch}
+.detail-info{display:flex;flex-direction:column;justify-content:center;min-width:0}
+.detail-buttons{flex-wrap:wrap;align-items:stretch}
+.detail-buttons .play-large{flex:1 1 200px;min-height:48px;padding:0 21px}
+.detail-buttons .secondary-btn{flex:0 0 48px;width:48px;min-height:48px;padding:0}
+.comment-form .primary-btn{width:auto}
+.profile-head>button{min-height:40px}
+.section-heading{gap:12px}
+@media(max-width:600px){
+  .detail-buttons .play-large{flex:1 1 100%}
+  .detail-buttons .secondary-btn{flex:1 1 0;width:auto}
+  .comment-form{justify-items:stretch}
+  .comment-form .primary-btn{width:100%}
+  .profile-head{flex-direction:column;align-items:center;text-align:center}
+  .profile-info h1,.profile-counts{justify-content:center}
+  .profile-head>button{width:100%}
+  .rank-item{gap:10px;padding:10px}
+  .rank-pos{width:20px}
+  .star-row button svg{width:28px;height:28px}
+}
