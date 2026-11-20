@@ -51,6 +51,18 @@ export async function setFavorite(gameId: string, on: boolean) {
   if (error) throw new Error(error.message);
 }
 
+type Stats = { plays: number; votes: number; avg: number | null; comments: number };
+async function fetchStats(): Promise<Record<string, Stats>> {
+  if (!supabase) return {};
+  const { data, error } = await supabase.from("game_stats").select("game_id,plays,votes,avg_stars,comments");
+  if (error) return {};
+  const out: Record<string, Stats> = {};
+  for (const r of (data ?? []) as { game_id: string; plays: number | null; votes: number | null; avg_stars: number | null; comments: number | null }[]) {
+    out[r.game_id] = { plays: Number(r.plays ?? 0), votes: Number(r.votes ?? 0), avg: r.avg_stars == null ? null : Number(r.avg_stars), comments: Number(r.comments ?? 0) };
+  }
+  return out;
+}
+
 export async function fetchRemoteGames(): Promise<Game[]> {
   if (!supabase) return [];
   const { data, error } = await supabase
@@ -60,6 +72,7 @@ export async function fetchRemoteGames(): Promise<Game[]> {
   if (error) throw new Error(error.message);
   const meta = readMeta();
   const favs = await fetchFavoriteIds();
+  const stats = await fetchStats();
   return ((data ?? []) as Row[]).map(r => ({
     id: r.id,
     name: r.name,
@@ -75,6 +88,7 @@ export async function fetchRemoteGames(): Promise<Game[]> {
     lastPlayed: meta[r.id]?.lastPlayed,
     playCount: meta[r.id]?.playCount ?? 0,
     isPublic: r.is_public,
+    stats: stats[r.id],
     remote: { filePath: r.file_path, coverPath: r.cover_path },
   }));
 }
