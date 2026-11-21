@@ -4,12 +4,25 @@ import type { Game, GameFile } from "./types";
 const MAX_FILES = 1500;
 const MAX_TOTAL = 50 * 1024 * 1024;
 const MAX_ROM = 4 * 1024 * 1024 * 1024;
-const ROM_RE = /\.(iso|cso|chd|pbp|cue|bin|img|mdf)$/i;
+const ROM_RE = /\.(iso|cso|chd|pbp|cue|bin|img|mdf|md|gen|smd|nes|sfc|smc|z64|n64|v64|gb|gbc|gba|nds)$/i;
 export const isRomPath = (p: string) => ROM_RE.test(p);
 /** Jogo de emulador: tem imagem de disco e nenhum HTML de entrada. */
 export const isRomGame = (files: { path: string }[]) => !files.some(f => /\.html?$/i.test(f.path)) && files.some(f => isRomPath(f.path));
 /** Plataforma (campo platform) -> núcleo do EmulatorJS. */
-export const EMU_CORES: Record<string, string> = { "PSP": "psp", "PlayStation 1": "psx", "Sega CD": "segaCD", "Sega Saturn": "segaSaturn", "3DO": "3do" };
+export const EMU_CORES: Record<string, string> = {
+  "PSP": "psp", "PlayStation 1": "psx", "Sega CD": "segaCD", "Sega Saturn": "segaSaturn", "3DO": "3do",
+  "Mega Drive": "segaMD", "NES": "nes", "Super Nintendo": "snes", "Nintendo 64": "n64",
+  "Game Boy": "gb", "Game Boy Advance": "gba", "Nintendo DS": "nds"
+};
+const EXT_PLATFORM: Record<string, string> = {
+  md: "Mega Drive", gen: "Mega Drive", smd: "Mega Drive", nes: "NES", sfc: "Super Nintendo", smc: "Super Nintendo",
+  z64: "Nintendo 64", n64: "Nintendo 64", v64: "Nintendo 64", gb: "Game Boy", gbc: "Game Boy", gba: "Game Boy Advance", nds: "Nintendo DS"
+};
+/** Adivinha a plataforma pela extensão; ISO/BIN/CUE são ambíguos (devolve undefined). */
+export function guessPlatform(files: { path: string }[]): string | undefined {
+  for (const f of files) { const p = EXT_PLATFORM[f.path.split(".").pop()?.toLowerCase() || ""]; if (p) return p; }
+  return undefined;
+}
 export const coreFor = (platform: string): string | undefined => EMU_CORES[platform];
 
 function safePath(path: string) {
