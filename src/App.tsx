@@ -4,14 +4,14 @@ import {
   Play, Maximize, Minimize, RotateCcw, ArrowLeft, Trash2, Pencil, Star,
   FolderOpen, Github, Link as LinkIcon, Gamepad, Sparkles, AlertCircle, CheckCircle2, Download, LogIn, LogOut, UserRound
 } from "lucide-react";
-import { filesFromUpload, makePlayableDocument } from "./importer";
+import { filesFromUpload, makePlayableDocument, isRomGame, coreFor, EMU_CORES } from "./importer";
 import GameSocial from "./Social";
 import RankingPanel from "./Ranking";
 import ProfilePanel from "./Profile";
 import { registerPlay } from "./social";
 import { saveRemoteGame, deleteRemoteGame, downloadRemoteGame } from "./admin";
 import { signIn, signUp, signOut, loadUser, onAuth, type AuthUser } from "./auth";
-import { fetchRemoteGames, loadRemoteGameFiles, setRemoteMeta, setFavorite } from "./remote";
+import { fetchRemoteGames, loadRemoteGameFiles, setRemoteMeta, setFavorite, remoteFileUrl } from "./remote";
 import type { Game, GameFile } from "./types";
 
 type View = "home" | "library" | "favorites" | "recent" | "detail" | "player" | "settings" | "ranking" | "profile";
@@ -132,7 +132,7 @@ export default function App() {
   async function chooseFiles(list: FileList | null) {
     if (!list?.length) return;
     setBusy(true); setError("");
-    try { setPendingFiles(await filesFromUpload(list)); }
+    try { const files = await filesFromUpload(list); setPendingFiles(files); if (isRomGame(files)) setForm(f => coreFor(f.platform) ? f : { ...f, platform: "PSP" }); }
     catch (e) { setError(e instanceof Error ? e.message : "Falha ao ler os ficheiros."); }
     finally { setBusy(false); }
   }
@@ -211,8 +211,10 @@ export default function App() {
     try {
       if (playUrl) URL.revokeObjectURL(playUrl);
       blobUrls.forEach(URL.revokeObjectURL);
-      const ready = await loadRemoteGameFiles(game);
-      const result = await makePlayableDocument(ready);
+      const core = coreFor(game.platform);
+      const result = core && game.remote
+        ? { url: `/emulator.html?core=${core}&name=${encodeURIComponent(game.name)}&url=${encodeURIComponent(remoteFileUrl(game))}`, urls: [] as string[] }
+        : await makePlayableDocument(await loadRemoteGameFiles(game));
       setPlayUrl(result.url); setBlobUrls(result.urls); setSelected(game); setView("player");
       setRemoteMeta(game.id, { lastPlayed: Date.now(), playCount: game.playCount + 1 });
       registerPlay(game.id);
@@ -245,7 +247,7 @@ export default function App() {
         <button className="primary-btn compact" onClick={toggleFullscreen}>{isFullscreen ? <Minimize/> : <Maximize/>}<span>{isFullscreen ? "Sair do ecrã inteiro" : "Ecrã inteiro"}</span></button>
       </div>
     </header>
-    <section className="game-stage"><iframe ref={frame} title={`Jogar ${selected.name}`} src={playUrl} sandbox="allow-scripts allow-pointer-lock allow-forms allow-modals allow-downloads" allow="fullscreen; autoplay; gamepad; accelerometer; gyroscope; picture-in-picture" /></section>
+    <section className="game-stage"><iframe ref={frame} title={`Jogar ${selected.name}`} src={playUrl} sandbox={coreFor(selected.platform) ? "allow-scripts allow-same-origin allow-pointer-lock allow-forms allow-modals allow-downloads" : "allow-scripts allow-pointer-lock allow-forms allow-modals allow-downloads"} allow="fullscreen; autoplay; gamepad; accelerometer; gyroscope; picture-in-picture" /></section>
     <footer className="player-footer"><span><span className="live-dot"/> Jogo em execução</span><span>Se o jogo não carregar, verifica os ficheiros e as dependências externas.</span></footer>
   </main>;
 
@@ -290,10 +292,10 @@ export default function App() {
     {modal && <div className="modal-backdrop" onMouseDown={e=>{if(e.target===e.currentTarget)setModal(false)}}><div className="modal">
       <div className="modal-head"><div><div className="eyebrow">{editing ? "PERSONALIZAR" : "EXPANDIR A COLEÇÃO"}</div><h2>{editing ? "Editar jogo" : "Adicionar novo jogo"}</h2></div><button className="icon-btn" onClick={()=>setModal(false)}><X/></button></div>
       {!editing && <div className="import-tabs"><button className={importMode==="files"?"selected":""} onClick={()=>setImportMode("files")}><Upload size={16}/>Ficheiros</button><button className={importMode==="url"?"selected":""} onClick={()=>setImportMode("url")}><LinkIcon size={16}/>URL</button><button className={importMode==="github"?"selected":""} onClick={()=>setImportMode("github")}><Github size={16}/>GitHub</button></div>}
-      {(editing || importMode==="files") && <div className="upload-zone" onClick={()=>fileInput.current?.click()}><input ref={fileInput} type="file" hidden multiple accept=".zip,.html,.htm,.js,.css,.json,.png,.jpg,.jpeg,.webp,.svg,.mp3,.ogg,.wasm" onChange={e=>chooseFiles(e.target.files)}/><input ref={folderInput} type="file" hidden multiple {...({ webkitdirectory: "", directory: "" } as Record<string, string>)} onChange={e=>chooseFiles(e.target.files)}/><div className="upload-icon"><Upload size={24}/></div><strong>{busy ? "A processar ficheiros..." : pendingFiles.length ? `${pendingFiles.length} ficheiros selecionados` : (editing ? "Trocar o ficheiro do jogo: arrasta ou clica para selecionar" : "Arrasta os ficheiros ou clica para selecionar")}</strong><small>{editing ? "O ficheiro antigo é apagado e o novo fica guardado. Se não escolheres nada, mantém-se o atual." : "ZIP com o jogo completo ou ficheiro HTML individual · Máx. 50 MB"}</small><span>ZIP · HTML · Recursos do jogo</span><button type="button" className="folder-pick" onClick={e=>{e.stopPropagation();folderInput.current?.click();}}>Ou selecionar uma pasta inteira</button></div>}
+      {(editing || importMode==="files") && <div className="upload-zone" onClick={()=>fileInput.current?.click()}><input ref={fileInput} type="file" hidden multiple accept=".zip,.html,.htm,.js,.css,.json,.png,.jpg,.jpeg,.webp,.svg,.mp3,.ogg,.wasm,.iso,.cso,.chd,.pbp,.cue,.bin,.img" onChange={e=>chooseFiles(e.target.files)}/><input ref={folderInput} type="file" hidden multiple {...({ webkitdirectory: "", directory: "" } as Record<string, string>)} onChange={e=>chooseFiles(e.target.files)}/><div className="upload-icon"><Upload size={24}/></div><strong>{busy ? "A processar ficheiros..." : pendingFiles.length ? `${pendingFiles.length} ficheiros selecionados` : (editing ? "Trocar o ficheiro do jogo: arrasta ou clica para selecionar" : "Arrasta os ficheiros ou clica para selecionar")}</strong><small>{editing ? "O ficheiro antigo é apagado e o novo fica guardado. Se não escolheres nada, mantém-se o atual." : "ZIP com o jogo, HTML individual ou imagem de disco (.iso) · Máx. 50 MB (ISO: limite do teu plano Supabase)"}</small><span>ZIP · HTML · Recursos do jogo</span><button type="button" className="folder-pick" onClick={e=>{e.stopPropagation();folderInput.current?.click();}}>Ou selecionar uma pasta inteira</button></div>}
       {!editing && importMode==="url" && <div className="remote-import"><label>URL do jogo (HTML ou ZIP)</label><div className="inline-field"><input value={sourceUrl} onChange={e=>setSourceUrl(e.target.value)} placeholder="https://exemplo.com/jogo.zip"/><button className="secondary-btn" disabled={busy || !sourceUrl.trim()} onClick={()=>importRemote(sourceUrl)}>Importar</button></div><small>O servidor de origem tem de permitir pedidos CORS.</small></div>}
       {!editing && importMode==="github" && <div className="remote-import"><label>Repositório público do GitHub</label><div className="inline-field"><input value={githubUrl} onChange={e=>setGithubUrl(e.target.value)} placeholder="https://github.com/utilizador/jogo"/><button className="secondary-btn" disabled={busy || !githubUrl.trim()} onClick={()=>importRemote(githubUrl,true)}>Importar</button></div><small>Importa a branch principal e procura um ficheiro HTML.</small></div>}
-      <div className="form-grid"><label className="full">Nome do jogo<input value={form.name} onChange={e=>setForm({...form,name:e.target.value})} placeholder="Ex.: O meu jogo"/></label><label className="full">Descrição<textarea rows={2} value={form.description} onChange={e=>setForm({...form,description:e.target.value})} placeholder="Descreve brevemente o teu jogo..."/></label><label>Categoria<select value={form.category} onChange={e=>setForm({...form,category:e.target.value})}>{["Indie","Aventura","Arcade","Projeto pessoal","Outro"].map(v=><option>{v}</option>)}</select></label><label>Género<select value={form.genre} onChange={e=>setForm({...form,genre:e.target.value})}>{["Ação","Aventura","Corrida","Puzzle","Estratégia","RPG","Simulação","Indie","Outro"].map(v=><option>{v}</option>)}</select></label><label>Plataforma<select value={form.platform} onChange={e=>setForm({...form,platform:e.target.value})}>{["HTML5","WebGL","Three.js","Phaser","Outro"].map(v=><option>{v}</option>)}</select></label><label className="check-row"><input type="checkbox" checked={form.isPublic} onChange={e=>setForm({...form,isPublic:e.target.checked})}/>Jogo público (visível para todos)</label><label>Capa do jogo<div className="cover-picker"><button type="button" className="secondary-btn" onClick={()=>coverInput.current?.click()}><Upload size={15}/>Escolher imagem</button><input ref={coverInput} type="file" accept="image/*" hidden onChange={e=>{const f=e.target.files?.[0];if(f){const reader=new FileReader();reader.onload=()=>setCover(String(reader.result));reader.readAsDataURL(f)}}}/>{cover && <img src={cover}/>}</div></label></div>
+      <div className="form-grid"><label className="full">Nome do jogo<input value={form.name} onChange={e=>setForm({...form,name:e.target.value})} placeholder="Ex.: O meu jogo"/></label><label className="full">Descrição<textarea rows={2} value={form.description} onChange={e=>setForm({...form,description:e.target.value})} placeholder="Descreve brevemente o teu jogo..."/></label><label>Categoria<select value={form.category} onChange={e=>setForm({...form,category:e.target.value})}>{["Indie","Aventura","Arcade","Projeto pessoal","Outro"].map(v=><option>{v}</option>)}</select></label><label>Género<select value={form.genre} onChange={e=>setForm({...form,genre:e.target.value})}>{["Ação","Aventura","Corrida","Puzzle","Estratégia","RPG","Simulação","Indie","Outro"].map(v=><option>{v}</option>)}</select></label><label>Plataforma<select value={form.platform} onChange={e=>setForm({...form,platform:e.target.value})}>{["HTML5","WebGL","Three.js","Phaser","Outro",...Object.keys(EMU_CORES)].map(v=><option>{v}</option>)}</select></label><label className="check-row"><input type="checkbox" checked={form.isPublic} onChange={e=>setForm({...form,isPublic:e.target.checked})}/>Jogo público (visível para todos)</label><label>Capa do jogo<div className="cover-picker"><button type="button" className="secondary-btn" onClick={()=>coverInput.current?.click()}><Upload size={15}/>Escolher imagem</button><input ref={coverInput} type="file" accept="image/*" hidden onChange={e=>{const f=e.target.files?.[0];if(f){const reader=new FileReader();reader.onload=()=>setCover(String(reader.result));reader.readAsDataURL(f)}}}/>{cover && <img src={cover}/>}</div></label></div>
       {error && <div className="form-error"><AlertCircle size={15}/>{error}</div>}
       <div className="modal-footer"><span>{editing && !pendingFiles.length ? "Ficheiros atuais mantidos" : `${pendingFiles.length} ficheiros`} · Guardado no Supabase</span><button className="primary-btn" disabled={busy} onClick={saveGame}>{busy ? "A guardar..." : editing ? "Guardar alterações" : "Adicionar à biblioteca"}</button></div>
     </div></div>}

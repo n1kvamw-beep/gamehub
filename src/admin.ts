@@ -1,6 +1,7 @@
 import { zipSync } from "fflate";
 import { supabase } from "./supabase";
 import type { Game, GameFile } from "./types";
+import { isRomGame } from "./importer";
 
 const BUCKET = "game-files";
 
@@ -40,9 +41,12 @@ export async function saveRemoteGame(input: { existing: Game | null; form: GameF
   const obsolete: Array<string | null | undefined> = [];
   try {
     if (input.files.length) {
-      const zip = await zipFiles(input.files);
-      const path = `${id}/${Date.now()}.zip`;
-      await upload(path, zip, "application/zip");
+      // Uma única imagem de disco (.iso, etc.) vai tal como está; o resto vai num ZIP.
+      const single = input.files.length === 1 && isRomGame(input.files);
+      const body = single ? input.files[0].blob : await zipFiles(input.files);
+      const ext = single ? (input.files[0].path.split(".").pop() || "iso").toLowerCase() : "zip";
+      const path = `${id}/${Date.now()}.${ext}`;
+      await upload(path, body, single ? "application/octet-stream" : "application/zip");
       uploaded.push(path);
       obsolete.push(filePath);
       filePath = path;

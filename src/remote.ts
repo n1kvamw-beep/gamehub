@@ -93,6 +93,8 @@ export async function fetchRemoteGames(): Promise<Game[]> {
   }));
 }
 
+export function remoteFileUrl(game: Game) { return game.remote ? publicUrl(game.remote.filePath) : ""; }
+
 // Descarrega o ZIP/HTML do jogo do Storage e prepara os ficheiros para jogar.
 export async function loadRemoteGameFiles(game: Game): Promise<Game> {
   if (!game.remote) return game;
