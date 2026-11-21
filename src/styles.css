@@ -39,3 +39,72 @@ input,textarea,select{font-size:16px}
   .game-card:hover{transform:none}
   .primary-btn:hover{transform:none}
 }
+
+.check-row{display:flex;flex-direction:row;align-items:center;gap:10px}
+.check-row input{width:auto}
+
+/* Social: avaliações, comentários, ranking */
+.social{margin-top:30px}
+.star-row{display:flex;gap:4px}
+.star-row button{border:0;background:none;color:#4a5068;padding:2px;display:grid;place-items:center}
+.star-row button.on{color:#f5c04a}
+.comment-form{display:grid;gap:9px;justify-items:end}
+.comment-form textarea{width:100%;background:#191e2c;border:1px solid #30364a;border-radius:8px;color:#eff0f7;padding:11px;outline:0;resize:vertical}
+.comment-form textarea:focus{border-color:#8270f4}
+.comment-list{display:grid;gap:10px;margin-top:16px}
+.comment{display:flex;gap:11px;align-items:flex-start;background:#111521;border:1px solid #252a3b;border-radius:10px;padding:12px}
+.comment>div:nth-child(2){flex:1;min-width:0}
+.comment strong{font-size:12px}
+.comment small{color:#7f859b;font-size:10px;margin-left:6px}
+.comment p{margin:5px 0 0;font-size:12px;color:#c3c7d8;line-height:1.5;overflow-wrap:anywhere}
+.avatar.small{width:30px;height:30px;font-size:12px;flex-shrink:0}
+.rank-list{display:grid;gap:9px;margin-top:18px}
+.rank-item{display:flex;align-items:center;gap:14px;width:100%;text-align:left;background:#111521;border:1px solid #252a3b;border-radius:11px;padding:11px 14px}
+.rank-item:hover{border-color:#6555b9}
+.rank-pos{font:700 18px 'Space Grotesk';color:#a99aff;width:26px;text-align:center}
+.rank-cover{width:46px;height:46px;border-radius:8px;overflow:hidden;background:#1b1b31;display:grid;place-items:center;color:#8877ee;flex-shrink:0}
+.rank-cover img{width:100%;height:100%;object-fit:cover}
+.rank-name{flex:1;min-width:0;display:grid;gap:3px}
+.rank-name strong{font-size:13px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.rank-name small{color:#858ba0;font-size:10px}
+.rank-stats{display:flex;gap:14px;color:#9aa0b6;font-size:11px;flex-wrap:wrap;justify-content:flex-end}
+.rank-stats span{display:flex;align-items:center;gap:5px}
+@media(max-width:600px){.rank-stats{display:none}}
+.profile-head{display:flex;align-items:center;gap:18px;flex-wrap:wrap;margin-bottom:28px}
+.avatar.big{width:72px;height:72px;font-size:28px;flex-shrink:0}
+.profile-info{flex:1;min-width:180px}
+.profile-info h1{margin:0 0 8px;font-size:24px;display:flex;align-items:center;gap:10px}
+.badge{display:inline-flex;align-items:center;gap:4px;font-size:10px;background:#2a2450;color:#b9acff;border-radius:99px;padding:3px 8px}
+.profile-counts{display:flex;gap:18px;color:#9aa0b6;font-size:12px}
+.profile-counts strong{color:#eff0f7}
+.link-name{background:none;border:0;color:inherit;font:inherit;font-weight:700;padding:0;cursor:pointer}
+.link-name:hover{color:#a99aff}
+
+/* Alinhamento de botões e blocos (telemóvel e PC) */
+.primary-btn,.secondary-btn{min-height:40px;line-height:1}
+.content{max-width:1320px;margin-inline:auto}
+.page-heading{flex-wrap:wrap;gap:12px}
+.detail-hero{align-items:stretch}
+.detail-info{display:flex;flex-direction:column;justify-content:center;min-width:0}
+.detail-buttons{flex-wrap:wrap;align-items:stretch}
+.detail-buttons .play-large{flex:1 1 200px;min-height:48px;padding:0 21px}
+.detail-buttons .secondary-btn{flex:0 0 48px;width:48px;min-height:48px;padding:0}
+.comment-form .primary-btn{width:auto}
+.profile-head>button{min-height:40px}
+.section-heading{gap:12px}
+@media(max-width:600px){
+  .detail-buttons .play-large{flex:1 1 100%}
+  .detail-buttons .secondary-btn{flex:1 1 0;width:auto}
+  .comment-form{justify-items:stretch}
+  .comment-form .primary-btn{width:100%}
+  .profile-head{flex-direction:column;align-items:center;text-align:center}
+  .profile-info h1,.profile-counts{justify-content:center}
+  .profile-head>button{width:100%}
+  .rank-item{gap:10px;padding:10px}
+  .rank-pos{width:20px}
+  .star-row button svg{width:28px;height:28px}
+}
+
+/* Checkbox "Jogo público" alinhado com o texto */
+.form-grid label.check-row{display:flex;flex-direction:row;align-items:center;justify-content:flex-start;gap:10px;font-size:12px}
+.form-grid label.check-row input[type=checkbox]{width:18px;height:18px;padding:0;margin:0;flex:0 0 18px;accent-color:#7865f5}

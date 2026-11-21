@@ -2,11 +2,7 @@ import { unzipSync } from "fflate";
 import type { Game, GameFile } from "./types";
 
 const MAX_FILES = 1500;
-const MAX_TOTAL = 4 * 1024 * 1024 * 1024;
-const ROM_RE = /\.(iso|cso|chd|pbp|cue|bin|img|mdf)$/i;
-export const isRomPath = (p: string) => ROM_RE.test(p);
-/** Um "jogo ROM" tem ficheiros de imagem de disco e nenhum HTML de entrada. */
-export const isRomGame = (files: { path: string }[]) => !files.some(f => /\.html?$/i.test(f.path)) && files.some(f => isRomPath(f.path));
+const MAX_TOTAL = 50 * 1024 * 1024;
 
 function safePath(path: string) {
   const normalized = path.replace(/\\/g, "/").replace(/^\/+/, "");
@@ -28,15 +24,14 @@ function validate(files: GameFile[]) {
   if (!files.length) throw new Error("Não foram encontrados ficheiros no jogo.");
   if (files.length > MAX_FILES) throw new Error("O jogo excede o limite de 1500 ficheiros.");
   const total = files.reduce((n, f) => n + f.blob.size, 0);
-  if (total > MAX_TOTAL) throw new Error("O jogo excede o limite de 4 GB.");
+  if (total > MAX_TOTAL) throw new Error("O jogo excede o limite de 50 MB.");
   const entry = files.find(f => f.path.toLowerCase() === "index.html") ||
     files.find(f => f.path.toLowerCase().endsWith("/index.html")) ||
-    files.find(f => /\.html?$/i.test(f.path)) ||
-    files.find(f => /\.(iso|cso|chd|pbp|img|mdf)$/i.test(f.path)) ||
-    files.find(f => isRomPath(f.path));
-  if (!entry) throw new Error("Não foi encontrado um ficheiro HTML de entrada nem uma imagem de disco (.iso).");
+    files.find(f => /\.html?$/i.test(f.path));
+  if (!entry) throw new Error("Não foi encontrado um ficheiro HTML de entrada (por exemplo, index.html).");
   return entry.path;
 }
+export function entryOf(files: GameFile[]) { return validate(files); }
 export async function filesFromUpload(fileList: FileList | File[]): Promise<GameFile[]> {
   const files: GameFile[] = [];
   for (const file of Array.from(fileList)) {
