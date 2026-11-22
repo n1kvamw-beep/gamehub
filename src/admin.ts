@@ -2,6 +2,7 @@ import { zipSync } from "fflate";
 import { supabase } from "./supabase";
 import type { Game, GameFile, Visibility } from "./types";
 import { isRomGame } from "./importer";
+import { r2Base, r2Put, r2Delete, r2Key, isR2, r2PublicUrl } from "./r2";
 
 const BUCKET = "game-files";
 const ROM_BUCKET = "rom-files";
@@ -28,6 +29,9 @@ async function upload(path: string, body: Blob, contentType: string, bucket = BU
 }
 
 async function removeFiles(items: Stored[]) {
+  const r2 = items.filter(i => isR2(i.path)).map(i => r2Key(i.path as string));
+  if (r2.length) await r2Delete(r2);
+  items = items.filter(i => !isR2(i.path));
   for (const bucket of [BUCKET, ROM_BUCKET]) {
     const list = items.filter(i => i.bucket === bucket && !!i.path).map(i => i.path as string);
     if (list.length) await need().storage.from(bucket).remove(list);
@@ -53,20 +57,35 @@ export async function saveRemoteGame(input: { existing: Game | null; form: GameF
       const ext = single ? (input.files[0].path.split(".").pop() || "iso").toLowerCase() : "zip";
       const path = `${id}/${Date.now()}.${ext}`;
       restricted = isRomGame(input.files);
-      const bucket = restricted ? ROM_BUCKET : BUCKET;
-      await upload(path, body, single ? "application/octet-stream" : "application/zip", bucket);
-      uploaded.push({ bucket, path });
+      const type = single ? "application/octet-stream" : "application/zip";
       obsolete.push({ bucket: oldRestricted ? ROM_BUCKET : BUCKET, path: filePath });
-      filePath = path;
+      if (!restricted && await r2Base()) {
+        // Jogos normais vão para o Cloudflare R2 (sem o limite de 50 MB do Supabase).
+        const key = `games/${path}`;
+        await r2Put(key, body, type);
+        uploaded.push({ bucket: "r2", path: "r2:" + key });
+        filePath = "r2:" + key;
+      } else {
+        const bucket = restricted ? ROM_BUCKET : BUCKET;
+        await upload(path, body, type, bucket);
+        uploaded.push({ bucket, path });
+        filePath = path;
+      }
     }
     if (input.cover.startsWith("data:")) {
       const blob = await (await fetch(input.cover)).blob();
       const ext = (blob.type.split("/")[1] || "png").replace("+xml", "");
       const path = `covers/${id}-${Date.now()}.${ext}`;
-      await upload(path, blob, blob.type || "image/png");
-      uploaded.push({ bucket: BUCKET, path });
       obsolete.push({ bucket: BUCKET, path: coverPath });
-      coverPath = path;
+      if (await r2Base()) {
+        await r2Put(path, blob, blob.type || "image/png");
+        uploaded.push({ bucket: "r2", path: "r2:" + path });
+        coverPath = "r2:" + path;
+      } else {
+        await upload(path, blob, blob.type || "image/png");
+        uploaded.push({ bucket: BUCKET, path });
+        coverPath = path;
+      }
     } else if (!input.cover) {
       obsolete.push({ bucket: BUCKET, path: coverPath });
       coverPath = null;
@@ -98,8 +117,15 @@ export async function deleteRemoteGame(game: Game) {
 export async function downloadRemoteGame(game: Game) {
   const path = game.remote?.filePath;
   if (!path) return;
-  const { data, error } = await need().storage.from(game.remote?.restricted ? ROM_BUCKET : BUCKET).download(path);
-  if (error || !data) throw new Error("Não foi possível descarregar o jogo.");
+  let data: Blob | null = null;
+  if (isR2(path)) {
+    await r2Base();
+    const res = await fetch(r2PublicUrl(path));
+    if (res.ok) data = await res.blob();
+  } else {
+    data = (await need().storage.from(game.remote?.restricted ? ROM_BUCKET : BUCKET).download(path)).data;
+  }
+  if (!data) throw new Error("Não foi possível descarregar o jogo.");
   const url = URL.createObjectURL(data);
   const link = document.createElement("a");
   link.href = url;
