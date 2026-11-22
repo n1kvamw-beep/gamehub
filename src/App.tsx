@@ -12,6 +12,7 @@ import { registerPlay } from "./social";
 import { saveRemoteGame, deleteRemoteGame, downloadRemoteGame } from "./admin";
 import { signIn, signUp, signOut, loadUser, onAuth, type AuthUser } from "./auth";
 import AccessPanel from "./AccessPanel";
+import AdminCharts from "./AdminCharts";
 import { fetchRemoteGames, loadRemoteGameFiles, setRemoteMeta, setFavorite, remoteFileUrl } from "./remote";
 import type { Game, GameFile, Visibility } from "./types";
 
@@ -321,6 +322,7 @@ function SettingsPanel({ games, user, onSignOut }: { games: Game[]; user: AuthUs
       <div><small>JOGOS ONLINE</small><strong>{games.length}</strong></div>
       <div><small>PÚBLICOS / PRIVADOS</small><strong>{publicCount} / {games.length - publicCount}</strong></div>
     </div>
+    <AdminCharts games={games}/>
     <AccessPanel/>
     <div className="detail-buttons" style={{ marginTop: 20 }}><button className="secondary-btn" onClick={onSignOut}><LogOut size={17}/> Terminar sessão</button></div>
   </section>;
