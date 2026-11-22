@@ -4,7 +4,7 @@ import crypto from "node:crypto";
 
 const env = process.env;
 const ACCOUNT = env.R2_ACCOUNT_ID, KEY_ID = env.R2_ACCESS_KEY_ID, SECRET = env.R2_SECRET_ACCESS_KEY;
-const BUCKET = env.R2_BUCKET, PUBLIC_URL = (env.R2_PUBLIC_URL || "").replace(/\/+$/, "");
+const BUCKET = env.R2_BUCKET, ROMS_BUCKET = env.R2_ROMS_BUCKET || "gamehub-roms", PUBLIC_URL = (env.R2_PUBLIC_URL || "").replace(/\/+$/, "");
 const SB_URL = (env.VITE_SUPABASE_URL || "").replace(/\/+$/, ""), SB_KEY = env.VITE_SUPABASE_KEY;
 
 const hmac = (key, data) => crypto.createHmac("sha256", key).update(data).digest();
@@ -12,9 +12,9 @@ const sha = data => crypto.createHash("sha256").update(data).digest("hex");
 const enc = s => encodeURIComponent(s).replace(/[!'()*]/g, c => "%" + c.charCodeAt(0).toString(16).toUpperCase());
 
 // URL pré-assinado (AWS Signature V4) para o R2.
-function presign(method, key, expires = 900) {
+function presign(method, key, expires = 900, bucket = BUCKET) {
   const host = `${ACCOUNT}.r2.cloudflarestorage.com`;
-  const path = "/" + [BUCKET, ...key.split("/")].map(enc).join("/");
+  const path = "/" + [bucket, ...key.split("/")].map(enc).join("/");
   const now = new Date().toISOString().replace(/[:-]|\.\d{3}/g, "");
   const date = now.slice(0, 8), scope = `${date}/auto/s3/aws4_request`;
   const query = {
@@ -42,6 +42,18 @@ async function requireAdmin(req) {
   return rows[0]?.role === "admin";
 }
 
+// Link temporário para uma ROM privada: só se o Supabase deixar esta pessoa ver o jogo (RLS).
+async function romUrl(req, gameId) {
+  if (!/^[0-9a-f-]{36}$/i.test(gameId || "") || !SB_URL || !SB_KEY) return null;
+  const token = (req.headers.authorization || "").replace(/^Bearer\s+/i, "");
+  const headers = { apikey: SB_KEY, ...(token ? { Authorization: `Bearer ${token}` } : {}) };
+  const r = await fetch(`${SB_URL}/rest/v1/games?id=eq.${gameId}&select=file_path`, { headers });
+  if (!r.ok) return null;
+  const path = (await r.json())[0]?.file_path;
+  if (typeof path !== "string" || !path.startsWith("r2rom:")) return null;
+  return presign("GET", path.slice(6), 6 * 3600, ROMS_BUCKET);
+}
+
 const validKey = k => typeof k === "string" && k.length < 300 && /^[\w./ -]+$/.test(k) && !k.includes("..") && !k.startsWith("/");
 
 export default async function handler(req, res) {
@@ -51,16 +63,23 @@ export default async function handler(req, res) {
   const body = typeof req.body === "string" ? JSON.parse(req.body || "{}") : (req.body || {});
   try {
     if (body.action === "config") return res.status(200).json({ publicUrl: configured ? PUBLIC_URL : null });
+    if (body.action === "read") {
+      if (!configured) return res.status(503).json({ error: "O Cloudflare R2 não está configurado no Vercel." });
+      const url = await romUrl(req, body.gameId);
+      return url ? res.status(200).json({ url }) : res.status(403).json({ error: "Sem permissão para este jogo. Pede ao administrador para te aprovar." });
+    }
     if (!configured) return res.status(503).json({ error: "O Cloudflare R2 não está configurado no Vercel." });
     if (!(await requireAdmin(req))) return res.status(403).json({ error: "Só o admin pode fazer isto." });
     if (body.action === "sign") {
       if (!validKey(body.key)) return res.status(400).json({ error: "Nome de ficheiro inválido." });
-      return res.status(200).json({ url: presign("PUT", body.key) });
+      return res.status(200).json({ url: presign("PUT", body.key, 900, body.private ? ROMS_BUCKET : BUCKET) });
     }
     if (body.action === "delete") {
       const keys = Array.isArray(body.keys) ? body.keys.filter(validKey) : [];
+      const romKeys = Array.isArray(body.romKeys) ? body.romKeys.filter(validKey) : [];
       for (const key of keys) await fetch(presign("DELETE", key, 60), { method: "DELETE" });
-      return res.status(200).json({ deleted: keys.length });
+      for (const key of romKeys) await fetch(presign("DELETE", key, 60, ROMS_BUCKET), { method: "DELETE" });
+      return res.status(200).json({ deleted: keys.length + romKeys.length });
     }
     return res.status(400).json({ error: "Ação desconhecida." });
   } catch (e) {

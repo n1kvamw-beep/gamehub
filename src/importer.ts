@@ -2,7 +2,7 @@ import { unzipSync } from "fflate";
 import type { Game, GameFile } from "./types";
 
 const MAX_FILES = 1500;
-const MAX_TOTAL = 50 * 1024 * 1024;
+const MAX_TOTAL = 300 * 1024 * 1024;
 const MAX_ROM = 4 * 1024 * 1024 * 1024;
 const ROM_RE = /\.(iso|cso|chd|pbp|cue|bin|img|mdf|md|gen|smd|nes|sfc|smc|z64|n64|v64|gb|gbc|gba|nds)$/i;
 export const isRomPath = (p: string) => ROM_RE.test(p);
@@ -46,7 +46,7 @@ function validate(files: GameFile[]) {
   if (files.length > MAX_FILES) throw new Error("O jogo excede o limite de 1500 ficheiros.");
   const total = files.reduce((n, f) => n + f.blob.size, 0);
   if (isRomGame(files)) { if (total > MAX_ROM) throw new Error("A imagem de disco excede o limite de 4 GB."); }
-  else if (total > MAX_TOTAL) throw new Error("O jogo excede o limite de 50 MB.");
+  else if (total > MAX_TOTAL) throw new Error("O jogo excede o limite de 300 MB.");
   const entry = files.find(f => f.path.toLowerCase() === "index.html") ||
     files.find(f => f.path.toLowerCase().endsWith("/index.html")) ||
     files.find(f => /\.html?$/i.test(f.path)) ||

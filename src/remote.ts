@@ -1,7 +1,7 @@
 import { supabase } from "./supabase";
 import { filesFromUpload, entryOf } from "./importer";
 import type { Game, Visibility } from "./types";
-import { r2Base, isR2, r2PublicUrl } from "./r2";
+import { r2Base, isR2, isR2Rom, r2PublicUrl, r2RomUrl } from "./r2";
 
 const BUCKET = "game-files";
 const META_KEY = "gamehub:remote-meta";
@@ -104,6 +104,7 @@ export async function fetchRemoteGames(): Promise<Game[]> {
 // ROMs restritas ficam num bucket privado: o link é assinado e só funciona para utilizadores aprovados.
 export async function remoteFileUrl(game: Game): Promise<string> {
   if (!game.remote) return "";
+  if (isR2Rom(game.remote.filePath)) return r2RomUrl(game.id);
   if (!game.remote.restricted) return publicUrl(game.remote.filePath);
   if (!supabase) throw new Error("O Supabase não está configurado.");
   const { data, error } = await supabase.storage.from("rom-files").createSignedUrl(game.remote.filePath, 6 * 3600);

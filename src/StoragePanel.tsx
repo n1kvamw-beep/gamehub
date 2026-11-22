@@ -9,8 +9,8 @@ export default function StoragePanel({ games, onChanged }: { games: Game[]; onCh
   const [busy, setBusy] = useState(false);
   const [log, setLog] = useState<string[]>([]);
   const pending = games.filter(needsMigration);
-  const inR2 = games.filter(g => g.remote && g.remote.filePath.startsWith("r2:")).length;
-  const rom = games.filter(g => g.remote?.restricted).length;
+  const inR2 = games.filter(g => g.remote?.filePath.startsWith("r2:")).length;
+  const rom = games.filter(g => g.remote?.filePath.startsWith("r2rom:")).length;
 
   useEffect(() => { r2Base().then(b => setReady(!!b)); }, []);
 
@@ -31,7 +31,7 @@ export default function StoragePanel({ games, onChanged }: { games: Game[]; onCh
       <div><small>CLOUDFLARE R2</small><strong>{ready === null ? "A verificar..." : ready ? "Ligado" : "Não configurado"}</strong></div>
       <div><small>NO CLOUDFLARE</small><strong>{inR2}</strong></div>
       <div><small>AINDA NO SUPABASE</small><strong>{pending.length}</strong></div>
-      <div><small>ROMS PRIVADAS (SUPABASE)</small><strong>{rom}</strong></div>
+      <div><small>ROMS PRIVADAS (CLOUDFLARE)</small><strong>{rom}</strong></div>
     </div>
     <div className="section-heading" style={{ marginTop: 24 }}><div><h2>Migrar para o Cloudflare</h2><p>Copia os ficheiros e capas dos jogos, confirma que chegaram e só depois apaga do Supabase. Os jogos novos já vão direto para o Cloudflare.</p></div></div>
     {ready === false && <div className="form-error"><AlertCircle size={15}/><span>Faltam as variáveis R2_* no Vercel (ou falta um redeploy).</span></div>}

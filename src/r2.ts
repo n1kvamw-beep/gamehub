@@ -3,6 +3,9 @@ import { supabase } from "./supabase";
 // Ficheiros no Cloudflare R2 ficam na base de dados como "r2:<chave>".
 export const isR2 = (path?: string | null) => !!path && path.startsWith("r2:");
 export const r2Key = (path: string) => path.slice(3);
+// ROMs privadas ficam no bucket privado do R2 como "r2rom:<chave>" (só se abrem com link temporário).
+export const isR2Rom = (path?: string | null) => !!path && path.startsWith("r2rom:");
+export const r2RomKey = (path: string) => path.slice(6);
 
 let base: string | null | undefined;
 
@@ -30,14 +33,26 @@ export function r2PublicUrl(path: string) {
   return base ? `${base}/${r2Key(path).split("/").map(encodeURIComponent).join("/")}` : "";
 }
 
-export async function r2Put(key: string, body: Blob, contentType: string) {
-  const { url } = await api({ action: "sign", key }, true);
+export async function r2Put(key: string, body: Blob, contentType: string, priv = false) {
+  const { url } = await api({ action: "sign", key, private: priv }, true);
   const res = await fetch(url as string, { method: "PUT", body, headers: { "Content-Type": contentType } });
   if (!res.ok) throw new Error(`Falha no envio para o Cloudflare (${res.status}). Verifica a política CORS do bucket.`);
 }
 
-export async function r2Delete(keys: string[]) {
-  if (keys.length) await api({ action: "delete", keys }, true);
+export async function r2Delete(keys: string[], romKeys: string[] = []) {
+  if (keys.length || romKeys.length) await api({ action: "delete", keys, romKeys }, true);
+}
+
+// Link temporário (6 h) para uma ROM privada; o servidor confirma se esta pessoa pode ver o jogo.
+export async function r2RomUrl(gameId: string): Promise<string> {
+  return (await api({ action: "read", gameId }, true)).url as string;
+}
+
+// Tamanho de uma ROM privada já guardada (pede só o 1.º byte).
+export async function r2RomSize(gameId: string): Promise<number> {
+  const res = await fetch(await r2RomUrl(gameId), { headers: { Range: "bytes=0-0" } });
+  const total = /\/(\d+)$/.exec(res.headers.get("content-range") || "");
+  return total ? Number(total[1]) : -1;
 }
 
 // Confirma que o ficheiro chegou ao R2 com o tamanho certo.
