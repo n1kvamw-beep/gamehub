@@ -60,3 +60,20 @@ export async function r2Verify(key: string, size: number) {
   const res = await fetch(r2PublicUrl("r2:" + key), { method: "HEAD" });
   return res.ok && Number(res.headers.get("content-length")) === size;
 }
+
+// Imagens de perfil (avatar/banner): guarda no R2 e devolve a chave "avatars/<id>/...".
+export async function r2PutImage(kind: "avatar" | "banner", blob: Blob): Promise<string> {
+  const { key, url } = await api({ action: "sign-image", kind, type: blob.type, size: blob.size }, true) as { key: string; url: string };
+  const res = await fetch(url, { method: "PUT", body: blob, headers: { "Content-Type": blob.type } });
+  if (!res.ok) throw new Error(`Falha no envio da imagem (${res.status}).`);
+  return key;
+}
+
+export async function r2DeleteImage(key: string) {
+  try { await api({ action: "delete-image", key }, true); } catch { /* a imagem antiga pode já não existir */ }
+}
+
+// Endereço de uma imagem de perfil já guardada (precisa de r2Base() carregado).
+export function imageUrl(key?: string | null) {
+  return key && base ? `${base}/${key.split("/").map(encodeURIComponent).join("/")}` : "";
+}

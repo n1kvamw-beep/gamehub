@@ -2,6 +2,7 @@ import { useEffect, useState, type FormEvent } from "react";
 import { Star, Trash2, MessageCircle } from "lucide-react";
 import type { Game } from "./types";
 import type { AuthUser } from "./auth";
+import Avatar from "./Avatar";
 import { fetchComments, addComment, deleteComment, fetchMyRating, setRating, type Comment } from "./social";
 
 type Props = { game: Game; user: AuthUser; onNeedLogin: () => void; onChanged: () => void; onOpenProfile: (name: string) => void };
@@ -56,7 +57,7 @@ export default function GameSocial({ game, user, onNeedLogin, onChanged, onOpenP
     {error && <div className="form-error"><span>{error}</span></div>}
     <div className="comment-list">
       {comments.map(c => <div className="comment" key={c.id}>
-        <div className="avatar small">{c.username.slice(0, 1).toUpperCase()}</div>
+        <Avatar name={c.username} avatarKey={c.avatar} size={32}/>
         <div><button className="link-name" onClick={() => onOpenProfile(c.username)}>{c.username}</button> <small>{new Date(c.created_at).toLocaleDateString("pt-PT")}</small><p>{c.body}</p></div>
         {(user?.id === c.user_id || user?.role === "admin") && <button className="icon-btn" title="Apagar" onClick={() => remove(c)}><Trash2 size={15}/></button>}
       </div>)}

@@ -1,7 +1,10 @@
 import { supabase } from "./supabase";
+import { r2Base, isR2, r2PublicUrl, imageUrl } from "./r2";
 
 export type PublicProfile = {
   id: string; username: string; role: string;
+  displayName: string; pronouns: string; status: string; bio: string; accent: string;
+  avatar: string; banner: string; avatarKey: string | null; bannerKey: string | null; since: string | null;
   followers: number; following: number; iFollow: boolean;
   games: { game_id: string; name: string; cover_path: string | null; plays: number; last_played: string }[];
 };
@@ -13,7 +16,8 @@ function need() {
 
 export async function fetchProfile(username: string): Promise<PublicProfile | null> {
   const sb = need();
-  const { data: p } = await sb.from("profiles").select("id,username,role").ilike("username", username).maybeSingle();
+  await r2Base();
+  const { data: p } = await sb.from("profiles").select("*").ilike("username", username).maybeSingle();
   if (!p) return null;
   const { data: s } = await sb.auth.getSession();
   const me = s.session?.user.id;
@@ -28,7 +32,11 @@ export async function fetchProfile(username: string): Promise<PublicProfile | nu
     const g = Array.isArray(r.games) ? r.games[0] : r.games;
     return g ? [{ game_id: r.game_id, name: g.name, cover_path: g.cover_path, plays: r.plays, last_played: r.last_played }] : [];
   });
-  return { id: p.id as string, username: p.username as string, role: p.role as string, followers: fo.count ?? 0, following: fi.count ?? 0, iFollow: !!mine.data, games };
+  const str = (v: unknown) => (typeof v === "string" ? v : "");
+  return { id: p.id as string, username: p.username as string, role: p.role as string,
+    displayName: str(p.display_name), pronouns: str(p.pronouns), status: str(p.status_text), bio: str(p.bio), accent: str(p.accent_color) || "#7865f5",
+    avatar: imageUrl(p.avatar_path), banner: imageUrl(p.banner_path), avatarKey: (p.avatar_path as string | null) ?? null, bannerKey: (p.banner_path as string | null) ?? null,
+    since: typeof p.created_at === "string" ? p.created_at : null, followers: fo.count ?? 0, following: fi.count ?? 0, iFollow: !!mine.data, games };
 }
 
 export async function setFollow(targetId: string, on: boolean) {
@@ -42,7 +50,21 @@ export async function setFollow(targetId: string, on: boolean) {
   if (error) throw new Error(error.message);
 }
 
+export type ProfileEdit = {
+  displayName: string; pronouns: string; status: string; bio: string; accent: string;
+  avatarKey: string | null; bannerKey: string | null;
+};
+
+export async function updateMyProfile(id: string, e: ProfileEdit) {
+  const { error } = await need().from("profiles").update({
+    display_name: e.displayName.trim() || null, pronouns: e.pronouns.trim() || null, status_text: e.status.trim() || null,
+    bio: e.bio.trim() || null, accent_color: e.accent, avatar_path: e.avatarKey, banner_path: e.bannerKey,
+  }).eq("id", id);
+  if (error) throw new Error(/profiles_custom_check|column/.test(error.message) ? "Falta correr o SQL do perfil no Supabase (supabase/gamehub-profile.sql)." : error.message);
+}
+
 export function coverUrl(path: string | null) {
+  if (path && isR2(path)) return r2PublicUrl(path);
   if (!path || !supabase) return null;
   return supabase.storage.from("game-files").getPublicUrl(path).data.publicUrl;
 }

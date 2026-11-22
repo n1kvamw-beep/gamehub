@@ -12,30 +12,40 @@ const sha = data => crypto.createHash("sha256").update(data).digest("hex");
 const enc = s => encodeURIComponent(s).replace(/[!'()*]/g, c => "%" + c.charCodeAt(0).toString(16).toUpperCase());
 
 // URL pré-assinado (AWS Signature V4) para o R2.
-function presign(method, key, expires = 900, bucket = BUCKET) {
+function presign(method, key, expires = 900, bucket = BUCKET, size = null) {
   const host = `${ACCOUNT}.r2.cloudflarestorage.com`;
   const path = "/" + [bucket, ...key.split("/")].map(enc).join("/");
   const now = new Date().toISOString().replace(/[:-]|\.\d{3}/g, "");
   const date = now.slice(0, 8), scope = `${date}/auto/s3/aws4_request`;
   const query = {
     "X-Amz-Algorithm": "AWS4-HMAC-SHA256", "X-Amz-Credential": `${KEY_ID}/${scope}`, "X-Amz-Date": now,
-    "X-Amz-Expires": String(expires), "X-Amz-SignedHeaders": "host",
+    "X-Amz-Expires": String(expires), "X-Amz-SignedHeaders": size == null ? "host" : "content-length;host",
   };
   const canonQuery = Object.keys(query).sort().map(k => `${enc(k)}=${enc(query[k])}`).join("&");
-  const canonical = [method, path, canonQuery, `host:${host}\n`, "host", "UNSIGNED-PAYLOAD"].join("\n");
+  const headers = (size == null ? "" : `content-length:${size}\n`) + `host:${host}\n`;
+  const canonical = [method, path, canonQuery, headers, size == null ? "host" : "content-length;host", "UNSIGNED-PAYLOAD"].join("\n");
   const toSign = ["AWS4-HMAC-SHA256", now, scope, sha(canonical)].join("\n");
   const signKey = hmac(hmac(hmac(hmac("AWS4" + SECRET, date), "auto"), "s3"), "aws4_request");
   const signature = crypto.createHmac("sha256", signKey).update(toSign).digest("hex");
   return `https://${host}${path}?${canonQuery}&X-Amz-Signature=${signature}`;
 }
 
-async function requireAdmin(req) {
+// Devolve o utilizador autenticado (ou null).
+async function requireUser(req) {
   const token = (req.headers.authorization || "").replace(/^Bearer\s+/i, "");
-  if (!token || !SB_URL || !SB_KEY) return false;
+  if (!token || !SB_URL || !SB_KEY) return null;
   const headers = { apikey: SB_KEY, Authorization: `Bearer ${token}` };
   const who = await fetch(`${SB_URL}/auth/v1/user`, { headers });
-  if (!who.ok) return false;
+  if (!who.ok) return null;
   const user = await who.json();
+  return { id: user.id, headers };
+}
+
+async function requireAdmin(req) {
+  const u = await requireUser(req);
+  if (!u) return false;
+  const { id, headers } = u;
+  const user = { id };
   const prof = await fetch(`${SB_URL}/rest/v1/profiles?id=eq.${encodeURIComponent(user.id)}&select=role`, { headers });
   if (!prof.ok) return false;
   const rows = await prof.json();
@@ -69,6 +79,20 @@ export default async function handler(req, res) {
       return url ? res.status(200).json({ url }) : res.status(403).json({ error: "Sem permissão para este jogo. Pede ao administrador para te aprovar." });
     }
     if (!configured) return res.status(503).json({ error: "O Cloudflare R2 não está configurado no Vercel." });
+    // Imagens de perfil: qualquer utilizador com sessão, só na sua própria pasta e com tamanho limitado.
+    if (body.action === "sign-image" || body.action === "delete-image") {
+      const u = await requireUser(req);
+      if (!u) return res.status(401).json({ error: "Entra na tua conta." });
+      if (body.action === "delete-image") {
+        if (typeof body.key !== "string" || !validKey(body.key) || !body.key.startsWith(`avatars/${u.id}/`)) return res.status(400).json({ error: "Ficheiro inválido." });
+        await fetch(presign("DELETE", body.key, 60), { method: "DELETE" });
+        return res.status(200).json({ deleted: 1 });
+      }
+      const size = Number(body.size), ext = { "image/webp": "webp", "image/jpeg": "jpg", "image/png": "png" }[body.type];
+      if (!ext || !(size > 0 && size <= 1024 * 1024) || !["avatar", "banner"].includes(body.kind)) return res.status(400).json({ error: "Imagem inválida (máx. 1 MB, WebP/JPG/PNG)." });
+      const key = `avatars/${u.id}/${body.kind}-${Date.now()}.${ext}`;
+      return res.status(200).json({ key, url: presign("PUT", key, 600, BUCKET, size) });
+    }
     if (!(await requireAdmin(req))) return res.status(403).json({ error: "Só o admin pode fazer isto." });
     if (body.action === "sign") {
       if (!validKey(body.key)) return res.status(400).json({ error: "Nome de ficheiro inválido." });

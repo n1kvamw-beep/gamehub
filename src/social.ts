@@ -1,6 +1,6 @@
 import { supabase } from "./supabase";
 
-export type Comment = { id: string; user_id: string; username: string; body: string; created_at: string };
+export type Comment = { id: string; user_id: string; username: string; body: string; created_at: string; avatar?: string | null };
 
 function need() {
   if (!supabase) throw new Error("O Supabase não está configurado.");
@@ -18,7 +18,15 @@ export async function fetchComments(gameId: string): Promise<Comment[]> {
     .select("id,user_id,username,body,created_at")
     .eq("game_id", gameId).order("created_at", { ascending: false }).limit(50);
   if (error) throw new Error(error.message);
-  return (data ?? []) as Comment[];
+  const list = (data ?? []) as Comment[];
+  // Avatares de quem comentou (uma só pergunta); se a coluna ainda não existir, fica a inicial.
+  const ids = [...new Set(list.map(c => c.user_id))];
+  if (ids.length) {
+    const { data: profs } = await need().from("profiles").select("id,avatar_path").in("id", ids);
+    const map = new Map(((profs ?? []) as { id: string; avatar_path?: string | null }[]).map(p => [p.id, p.avatar_path ?? null]));
+    for (const c of list) c.avatar = map.get(c.user_id) ?? null;
+  }
+  return list;
 }
 
 export async function addComment(gameId: string, body: string) {

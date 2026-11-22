@@ -1,6 +1,7 @@
 import { supabase } from "./supabase";
+import { r2Base } from "./r2";
 
-export type AuthUser = { id: string; username: string; role: "admin" | "user" } | null;
+export type AuthUser = { id: string; username: string; role: "admin" | "user"; avatarKey?: string | null; displayName?: string } | null;
 
 // O Supabase usa email para entrar. Aqui o utilizador só escreve o nome; o email é interno.
 const DOMAIN = "gamehub.app";
@@ -37,11 +38,14 @@ export async function loadUser(): Promise<AuthUser> {
   const { data } = await supabase.auth.getSession();
   const user = data.session?.user;
   if (!user) return null;
-  const { data: profile } = await supabase.from("profiles").select("username,role").eq("id", user.id).maybeSingle();
+  await r2Base();
+  const { data: profile } = await supabase.from("profiles").select("*").eq("id", user.id).maybeSingle();
   return {
     id: user.id,
     username: (profile?.username as string | undefined) ?? user.email?.split("@")[0] ?? "",
     role: profile?.role === "admin" ? "admin" : "user",
+    avatarKey: (profile?.avatar_path as string | null | undefined) ?? null,
+    displayName: (profile?.display_name as string | null | undefined) ?? undefined,
   };
 }
 
