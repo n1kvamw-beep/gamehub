@@ -7,7 +7,7 @@ const META_KEY = "gamehub:remote-meta";
 
 type Row = {
   id: string; name: string; description: string | null; category: string; genre: string;
-  platform: string; file_path: string; cover_path: string | null; is_public: boolean; created_at: string;
+  platform: string; file_path: string; cover_path: string | null; is_public: boolean; created_at: string; restricted?: boolean | null;
 };
 type Meta = { favorite?: boolean; lastPlayed?: number; playCount?: number };
 
@@ -67,7 +67,7 @@ export async function fetchRemoteGames(): Promise<Game[]> {
   if (!supabase) return [];
   const { data, error } = await supabase
     .from("games")
-    .select("id,name,description,category,genre,platform,file_path,cover_path,is_public,created_at")
+    .select("*")
     .order("created_at", { ascending: false });
   if (error) throw new Error(error.message);
   const meta = readMeta();
@@ -89,11 +89,19 @@ export async function fetchRemoteGames(): Promise<Game[]> {
     playCount: meta[r.id]?.playCount ?? 0,
     isPublic: r.is_public,
     stats: stats[r.id],
-    remote: { filePath: r.file_path, coverPath: r.cover_path },
+    remote: { filePath: r.file_path, coverPath: r.cover_path, restricted: !!r.restricted },
   }));
 }
 
-export function remoteFileUrl(game: Game) { return game.remote ? publicUrl(game.remote.filePath) : ""; }
+// ROMs restritas ficam num bucket privado: o link é assinado e só funciona para utilizadores aprovados.
+export async function remoteFileUrl(game: Game): Promise<string> {
+  if (!game.remote) return "";
+  if (!game.remote.restricted) return publicUrl(game.remote.filePath);
+  if (!supabase) throw new Error("O Supabase não está configurado.");
+  const { data, error } = await supabase.storage.from("rom-files").createSignedUrl(game.remote.filePath, 6 * 3600);
+  if (error || !data) throw new Error("Sem permissão para este jogo. Pede ao administrador para te aprovar.");
+  return data.signedUrl;
+}
 
 // Descarrega o ZIP/HTML do jogo do Storage e prepara os ficheiros para jogar.
 export async function loadRemoteGameFiles(game: Game): Promise<Game> {

@@ -5,5 +5,5 @@ export type Game = {
   addedAt: number; favorite: boolean; lastPlayed?: number; playCount: number;
   isPublic?: boolean;
   stats?: { plays: number; votes: number; avg: number | null; comments: number };
-  remote?: { filePath: string; coverPath?: string | null };
+  remote?: { filePath: string; coverPath?: string | null; restricted?: boolean };
 };

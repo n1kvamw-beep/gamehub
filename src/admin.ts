@@ -4,6 +4,8 @@ import type { Game, GameFile } from "./types";
 import { isRomGame } from "./importer";
 
 const BUCKET = "game-files";
+const ROM_BUCKET = "rom-files";
+type Stored = { bucket: string; path: string | null | undefined };
 
 export type GameForm = {
   name: string; description: string; category: string; genre: string; platform: string; isPublic: boolean;
@@ -20,14 +22,16 @@ async function zipFiles(files: GameFile[]): Promise<Blob> {
   return new Blob([zipSync(data)], { type: "application/zip" });
 }
 
-async function upload(path: string, body: Blob, contentType: string) {
-  const { error } = await need().storage.from(BUCKET).upload(path, body, { contentType, upsert: false });
+async function upload(path: string, body: Blob, contentType: string, bucket = BUCKET) {
+  const { error } = await need().storage.from(bucket).upload(path, body, { contentType, upsert: false });
   if (error) throw new Error(`Falha no envio do ficheiro: ${error.message}`);
 }
 
-async function removeFiles(paths: Array<string | null | undefined>) {
-  const list = paths.filter((p): p is string => !!p);
-  if (list.length) await need().storage.from(BUCKET).remove(list);
+async function removeFiles(items: Stored[]) {
+  for (const bucket of [BUCKET, ROM_BUCKET]) {
+    const list = items.filter(i => i.bucket === bucket && !!i.path).map(i => i.path as string);
+    if (list.length) await need().storage.from(bucket).remove(list);
+  }
 }
 
 // Cria ou atualiza um jogo: envia ZIP/capa para o Storage e grava a linha na tabela games.
@@ -37,8 +41,10 @@ export async function saveRemoteGame(input: { existing: Game | null; form: GameF
   const id = old?.id ?? crypto.randomUUID();
   let filePath = old?.remote?.filePath;
   let coverPath: string | null = old?.remote?.coverPath ?? null;
-  const uploaded: string[] = [];
-  const obsolete: Array<string | null | undefined> = [];
+  const oldRestricted = !!old?.remote?.restricted;
+  let restricted = oldRestricted;
+  const uploaded: Stored[] = [];
+  const obsolete: Stored[] = [];
   try {
     if (input.files.length) {
       // Uma única imagem de disco (.iso, etc.) vai tal como está; o resto vai num ZIP.
@@ -46,9 +52,11 @@ export async function saveRemoteGame(input: { existing: Game | null; form: GameF
       const body = single ? input.files[0].blob : await zipFiles(input.files);
       const ext = single ? (input.files[0].path.split(".").pop() || "iso").toLowerCase() : "zip";
       const path = `${id}/${Date.now()}.${ext}`;
-      await upload(path, body, single ? "application/octet-stream" : "application/zip");
-      uploaded.push(path);
-      obsolete.push(filePath);
+      restricted = isRomGame(input.files);
+      const bucket = restricted ? ROM_BUCKET : BUCKET;
+      await upload(path, body, single ? "application/octet-stream" : "application/zip", bucket);
+      uploaded.push({ bucket, path });
+      obsolete.push({ bucket: oldRestricted ? ROM_BUCKET : BUCKET, path: filePath });
       filePath = path;
     }
     if (input.cover.startsWith("data:")) {
@@ -56,18 +64,19 @@ export async function saveRemoteGame(input: { existing: Game | null; form: GameF
       const ext = (blob.type.split("/")[1] || "png").replace("+xml", "");
       const path = `covers/${id}-${Date.now()}.${ext}`;
       await upload(path, blob, blob.type || "image/png");
-      uploaded.push(path);
-      obsolete.push(coverPath);
+      uploaded.push({ bucket: BUCKET, path });
+      obsolete.push({ bucket: BUCKET, path: coverPath });
       coverPath = path;
     } else if (!input.cover) {
-      obsolete.push(coverPath);
+      obsolete.push({ bucket: BUCKET, path: coverPath });
       coverPath = null;
     }
     if (!filePath) throw new Error("Falta o ficheiro do jogo.");
     const row = {
       name: input.form.name, description: input.form.description, category: input.form.category,
       genre: input.form.genre, platform: input.form.platform, file_path: filePath,
-      cover_path: coverPath, is_public: input.form.isPublic,
+      cover_path: coverPath, is_public: restricted ? false : input.form.isPublic,
+      ...(restricted || oldRestricted ? { restricted } : {}),
     };
     const { error } = old
       ? await sb.from("games").update(row).eq("id", id)
@@ -83,13 +92,13 @@ export async function saveRemoteGame(input: { existing: Game | null; form: GameF
 export async function deleteRemoteGame(game: Game) {
   const { error } = await need().from("games").delete().eq("id", game.id);
   if (error) throw new Error(error.message);
-  await removeFiles([game.remote?.filePath, game.remote?.coverPath]);
+  await removeFiles([{ bucket: game.remote?.restricted ? ROM_BUCKET : BUCKET, path: game.remote?.filePath }, { bucket: BUCKET, path: game.remote?.coverPath }]);
 }
 
 export async function downloadRemoteGame(game: Game) {
   const path = game.remote?.filePath;
   if (!path) return;
-  const { data, error } = await need().storage.from(BUCKET).download(path);
+  const { data, error } = await need().storage.from(game.remote?.restricted ? ROM_BUCKET : BUCKET).download(path);
   if (error || !data) throw new Error("Não foi possível descarregar o jogo.");
   const url = URL.createObjectURL(data);
   const link = document.createElement("a");

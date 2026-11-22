@@ -108,3 +108,13 @@ input,textarea,select{font-size:16px}
 /* Checkbox "Jogo público" alinhado com o texto */
 .form-grid label.check-row{display:flex;flex-direction:row;align-items:center;justify-content:flex-start;gap:10px;font-size:12px}
 .form-grid label.check-row input[type=checkbox]{width:18px;height:18px;padding:0;margin:0;flex:0 0 18px;accent-color:#7865f5}
+
+/* Acesso às ROMs (admin) */
+.access-panel{margin-top:24px;background:#111521;border:1px solid #252a3b;border-radius:11px;padding:18px}
+.access-panel h2{font:600 16px 'Space Grotesk';margin:0 0 6px}
+.access-panel p{font-size:11px;color:#858ba0;margin:0 0 12px}
+.access-panel ul{list-style:none;margin:0;padding:0;display:grid;gap:8px}
+.access-panel li{display:flex;align-items:center;justify-content:space-between;gap:12px;background:#151a28;border:1px solid #2b3043;border-radius:8px;padding:10px 12px;font-size:12px}
+.access-panel .check-row{font-size:11px;color:#a5aabd}
+.access-panel .check-row input{width:18px;height:18px;accent-color:#7865f5}
+.rom-note{grid-column:1/-1;font-size:11px;color:#a99aff;margin:0}
