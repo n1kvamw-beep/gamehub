@@ -11,8 +11,7 @@ import ProfilePanel from "./Profile";
 import { registerPlay } from "./social";
 import { saveRemoteGame, deleteRemoteGame, downloadRemoteGame } from "./admin";
 import { signIn, signUp, signOut, loadUser, onAuth, type AuthUser } from "./auth";
-import AccessPanel from "./AccessPanel";
-import AdminCharts from "./AdminCharts";
+import AdminPanel from "./AdminPanel";
 import { fetchRemoteGames, loadRemoteGameFiles, setRemoteMeta, setFavorite, remoteFileUrl } from "./remote";
 import type { Game, GameFile, Visibility } from "./types";
 
@@ -231,14 +230,14 @@ export default function App() {
     } catch { setError("O navegador não permitiu o modo de ecrã inteiro."); }
   }
   function backToLibrary() { if (document.fullscreenElement) document.exitFullscreen().catch(() => {}); setView("detail"); }
-  const title = view === "ranking" ? "Ranking" : view === "settings" ? "Configurações" : view === "favorites" ? "Os meus favoritos" : view === "recent" ? "Jogados recentemente" : view === "library" ? "A minha biblioteca" : "Descobrir jogos";
+  const title = view === "ranking" ? "Ranking" : view === "settings" ? "Administração" : view === "favorites" ? "Os meus favoritos" : view === "recent" ? "Jogados recentemente" : view === "library" ? "A minha biblioteca" : "Descobrir jogos";
   const navItems: { id: View; label: string; icon: typeof Gamepad2 }[] = [
     { id:"home", label:"Início", icon:Gamepad2 }, { id:"library", label:"Biblioteca", icon:Library },
     { id:"favorites", label:"Favoritos", icon:Heart }, { id:"recent", label:"Recentes", icon:Clock3 },
     { id:"ranking", label:"Ranking", icon:Star }
   ];
   if (user) navItems.push({ id:"profile", label:"O meu perfil", icon:UserRound });
-  if (isAdmin) navItems.push({ id:"settings", label:"Configurações", icon:Settings });
+  if (isAdmin) navItems.push({ id:"settings", label:"Administração", icon:Settings });
 
   if (view === "player" && selected) return <main className="player-page">
     <header className="player-bar">
@@ -277,7 +276,7 @@ export default function App() {
         </>}
         {view === "profile" && profileName && <ProfilePanel username={profileName} user={user} onNeedLogin={() => { openAuth(); setAuthError("Entra na tua conta para participar."); }} onOpenGame={id => { const g = games.find(x => x.id === id); if (g) { setSelected(g); setView("detail"); } }}/>}
         {view === "ranking" && <RankingPanel games={games} onOpen={g => { setSelected(g); setView("detail"); }}/>}
-        {view === "settings" && <SettingsPanel games={games} user={user} onSignOut={() => { signOut(); }}/>}
+        {view === "settings" && <AdminPanel games={games} user={user} onSignOut={() => { signOut(); }} onEdit={g => openEdit(g)} onChanged={async () => { await refresh(); }}/>}
         {view !== "home" && view !== "settings" && view !== "ranking" && view !== "profile" && <><div className="page-heading"><div><div className="eyebrow">A TUA COLEÇÃO</div><h1>{title}</h1><p>{filtered.length} {filtered.length === 1 ? "jogo encontrado" : "jogos encontrados"}</p></div>{isAdmin && <button className="primary-btn" onClick={openAdd}><Plus size={18}/>Adicionar jogo</button>}</div><div className="filter-row"><label className="filter-select">Género <select value={genre} onChange={e=>setGenre(e.target.value)}><option>Todos</option>{["Ação","Aventura","Corrida","Puzzle","Estratégia","RPG","Simulação","Indie","Outro"].map(g=><option key={g}>{g}</option>)}</select></label><label className="filter-select">Ordenar por <select value={sort} onChange={e=>setSort(e.target.value)}><option value="newest">Mais recentes</option><option value="oldest">Mais antigos</option><option value="name">Nome (A–Z)</option></select></label></div><div className="game-grid">{filtered.map(g=><GameCard key={g.id} game={g} onOpen={()=>{setSelected(g);setView("detail")}} onFavorite={()=>toggleFavorite(g)}/>)}</div>{filtered.length===0 && <div className="empty-state compact-empty"><div className="empty-icon"><Search/></div><h2>Nenhum jogo encontrado</h2><p>Experimenta alterar a pesquisa ou os filtros.</p><button className="secondary-btn" onClick={()=>{setQuery("");setGenre("Todos")}}>Limpar filtros</button></div>}</>}
       </section>}
       {error && <div className="toast error"><AlertCircle size={17}/>{error}<button onClick={()=>setError("")}><X size={15}/></button></div>}
@@ -312,18 +311,3 @@ function GameCard({game,onOpen,onFavorite}:{game:Game;onOpen:()=>void;onFavorite
   return <article className="game-card"><button className="card-cover" onClick={onOpen}>{game.cover ? <img src={game.cover}/> : <div className="cover-placeholder"><Gamepad2 size={35}/><span>GAMEHUB</span></div>}<span className="card-play"><Play size={19} fill="currentColor"/></span><span className="card-category">{game.category}</span></button><div className="card-info"><div className="card-title-row"><button className="card-title" onClick={onOpen}>{game.name}</button><button className={`favorite-btn ${game.favorite?"active":""}`} onClick={onFavorite}><Heart size={17} fill={game.favorite?"currentColor":"none"}/></button></div><p>{game.description || "Sem descrição disponível."}</p><div className="card-meta"><span>{game.genre}</span><span>{game.platform}</span></div></div></article>;
 }
 
-function SettingsPanel({ games, user, onSignOut }: { games: Game[]; user: AuthUser; onSignOut: () => void }) {
-  const publicCount = games.filter(g => g.isPublic !== false).length;
-  return <section className="content">
-    <div className="page-heading"><div><div className="eyebrow">ADMINISTRAÇÃO</div><h1>Configurações</h1><p>Gestão do GameHub.</p></div></div>
-    <div className="info-panel">
-      <div><small>CONTA</small><strong>{user?.username}</strong></div>
-      <div><small>PAPEL</small><strong>{user?.role === "admin" ? "Administrador" : "Utilizador"}</strong></div>
-      <div><small>JOGOS ONLINE</small><strong>{games.length}</strong></div>
-      <div><small>PÚBLICOS / PRIVADOS</small><strong>{publicCount} / {games.length - publicCount}</strong></div>
-    </div>
-    <AdminCharts games={games}/>
-    <AccessPanel/>
-    <div className="detail-buttons" style={{ marginTop: 20 }}><button className="secondary-btn" onClick={onSignOut}><LogOut size={17}/> Terminar sessão</button></div>
-  </section>;
-}
