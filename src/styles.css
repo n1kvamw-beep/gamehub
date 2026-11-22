@@ -118,3 +118,5 @@ input,textarea,select{font-size:16px}
 .access-panel .check-row{font-size:11px;color:#a5aabd}
 .access-panel .check-row input{width:18px;height:18px;accent-color:#7865f5}
 .rom-note{grid-column:1/-1;font-size:11px;color:#a99aff;margin:0}
+.access-actions{display:flex;align-items:center;gap:12px}
+.access-actions .secondary-btn{padding:7px 9px}

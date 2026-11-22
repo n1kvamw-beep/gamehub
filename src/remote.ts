@@ -1,13 +1,13 @@
 import { supabase } from "./supabase";
 import { filesFromUpload, entryOf } from "./importer";
-import type { Game } from "./types";
+import type { Game, Visibility } from "./types";
 
 const BUCKET = "game-files";
 const META_KEY = "gamehub:remote-meta";
 
 type Row = {
   id: string; name: string; description: string | null; category: string; genre: string;
-  platform: string; file_path: string; cover_path: string | null; is_public: boolean; created_at: string; restricted?: boolean | null;
+  platform: string; file_path: string; cover_path: string | null; is_public: boolean; created_at: string; restricted?: boolean | null; visibility?: string | null;
 };
 type Meta = { favorite?: boolean; lastPlayed?: number; playCount?: number };
 
@@ -63,6 +63,10 @@ async function fetchStats(): Promise<Record<string, Stats>> {
   return out;
 }
 
+function visOf(r: Row): Visibility {
+  return r.visibility === "family" || r.visibility === "private" || r.visibility === "public" ? r.visibility : (r.is_public ? "public" : "private");
+}
+
 export async function fetchRemoteGames(): Promise<Game[]> {
   if (!supabase) return [];
   const { data, error } = await supabase
@@ -87,7 +91,8 @@ export async function fetchRemoteGames(): Promise<Game[]> {
     favorite: favs.has(r.id),
     lastPlayed: meta[r.id]?.lastPlayed,
     playCount: meta[r.id]?.playCount ?? 0,
-    isPublic: r.is_public,
+    isPublic: visOf(r) === "public",
+    visibility: visOf(r),
     stats: stats[r.id],
     remote: { filePath: r.file_path, coverPath: r.cover_path, restricted: !!r.restricted },
   }));

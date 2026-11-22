@@ -1,6 +1,6 @@
 import { zipSync } from "fflate";
 import { supabase } from "./supabase";
-import type { Game, GameFile } from "./types";
+import type { Game, GameFile, Visibility } from "./types";
 import { isRomGame } from "./importer";
 
 const BUCKET = "game-files";
@@ -8,7 +8,7 @@ const ROM_BUCKET = "rom-files";
 type Stored = { bucket: string; path: string | null | undefined };
 
 export type GameForm = {
-  name: string; description: string; category: string; genre: string; platform: string; isPublic: boolean;
+  name: string; description: string; category: string; genre: string; platform: string; isPublic: boolean; visibility: Visibility;
 };
 
 function need() {
@@ -75,7 +75,7 @@ export async function saveRemoteGame(input: { existing: Game | null; form: GameF
     const row = {
       name: input.form.name, description: input.form.description, category: input.form.category,
       genre: input.form.genre, platform: input.form.platform, file_path: filePath,
-      cover_path: coverPath, is_public: restricted ? false : input.form.isPublic,
+      cover_path: coverPath, is_public: input.form.visibility === "public", visibility: input.form.visibility,
       ...(restricted || oldRestricted ? { restricted } : {}),
     };
     const { error } = old
