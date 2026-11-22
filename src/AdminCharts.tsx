@@ -58,6 +58,8 @@ const top = (rows: Row[], n: number) => [...rows].sort((a, b) => b.value - a.val
 // Painel só para o admin: visão geral do site a partir dos dados que a app já carrega.
 export default function AdminCharts({ games }: { games: Game[] }) {
   const [members, setMembers] = useState<{ family: number; none: number } | null>(null);
+  const [players, setPlayers] = useState<Row[]>([]);
+  const [daily, setDaily] = useState<Row[] | "missing" | null>(null);
 
   useEffect(() => {
     (async () => {
@@ -66,6 +68,32 @@ export default function AdminCharts({ games }: { games: Game[] }) {
       if (error) return; // antes de correr o SQL a coluna approved pode não existir
       const users = ((data ?? []) as { role: string; approved: boolean }[]).filter(u => u.role !== "admin");
       setMembers({ family: users.filter(u => u.approved).length, none: users.filter(u => !u.approved).length });
+    })();
+  }, []);
+
+  useEffect(() => {
+    (async () => {
+      if (!supabase) return;
+      const [ug, pr] = await Promise.all([
+        supabase.from("user_games").select("user_id,plays").limit(5000),
+        supabase.from("profiles").select("id,username"),
+      ]);
+      if (!ug.error && !pr.error) {
+        const names = new Map(((pr.data ?? []) as { id: string; username: string }[]).map(p => [p.id, p.username]));
+        const totals = new Map<string, number>();
+        for (const r of (ug.data ?? []) as { user_id: string; plays: number | null }[]) totals.set(r.user_id, (totals.get(r.user_id) ?? 0) + Number(r.plays ?? 0));
+        setPlayers(top([...totals].map(([id, value]) => ({ label: names.get(id) ?? "?", value })), 8));
+      }
+      const since = new Date(); since.setDate(since.getDate() - 13); since.setHours(0, 0, 0, 0);
+      const ev = await supabase.from("play_events").select("created_at").gte("created_at", since.toISOString()).limit(20000);
+      if (ev.error) { setDaily("missing"); return; }
+      const times = ((ev.data ?? []) as { created_at: string }[]).map(e => new Date(e.created_at));
+      const days: Row[] = [];
+      for (let i = 13; i >= 0; i--) {
+        const day = new Date(); day.setHours(0, 0, 0, 0); day.setDate(day.getDate() - i);
+        days.push({ label: String(day.getDate()), value: times.filter(t => t.toDateString() === day.toDateString()).length });
+      }
+      setDaily(days);
     })();
   }, []);
 
@@ -115,6 +143,10 @@ export default function AdminCharts({ games }: { games: Game[] }) {
         { label: "Sem acesso", value: members.none, color: COLORS[2] },
       ]}/>}
       <Columns title="Jogos adicionados (últimos 6 meses)" rows={d.months}/>
+      {daily === "missing"
+        ? <div className="chart-card"><h3>Partidas por dia</h3><p className="chart-empty">Falta correr supabase/gamehub-stats.sql no Supabase.</p></div>
+        : daily && <Columns title="Partidas por dia (últimos 14 dias)" rows={daily}/>}
+      <Bars title="Quem joga mais (partidas)" rows={players}/>
       <Bars title="Jogos por plataforma" rows={d.byPlatform}/>
       <Bars title="Mais jogados (partidas)" rows={d.topPlays}/>
       <Bars title="Melhor avaliados" rows={d.topRated} unit=" ★"/>

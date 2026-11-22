@@ -48,4 +48,6 @@ export async function setRating(gameId: string, stars: number) {
 // Conta uma partida no ranking global (falha em silêncio).
 export async function registerPlay(gameId: string) {
   try { await need().rpc("register_play", { p_game: gameId }); } catch { /* ignorado */ }
+  // Registo diário para os gráficos do admin (precisa de supabase/gamehub-stats.sql).
+  try { await need().from("play_events").insert({ game_id: gameId }); } catch { /* ignorado */ }
 }
