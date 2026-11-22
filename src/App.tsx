@@ -2,12 +2,14 @@ import { useEffect, useMemo, useRef, useState, type FormEvent } from "react";
 import {
   Gamepad2, Search, Plus, Library, Heart, Clock3, Settings, Menu, X, Upload,
   Play, Maximize, Minimize, RotateCcw, ArrowLeft, Trash2, Pencil, Star,
-  FolderOpen, Github, Link as LinkIcon, Gamepad, Sparkles, AlertCircle, CheckCircle2, Download, LogIn, LogOut, UserRound
+  FolderOpen, Github, Link as LinkIcon, Gamepad, Sparkles, AlertCircle, CheckCircle2, Download, LogIn, LogOut, UserRound, Smartphone
 } from "lucide-react";
 import { filesFromUpload, makePlayableDocument, isRomGame, coreFor, guessPlatform, EMU_CORES } from "./importer";
 import GameSocial from "./Social";
 import RankingPanel from "./Ranking";
 import ProfilePanel from "./Profile";
+import PadHost from "./PadHost";
+import PadController from "./PadController";
 import { registerPlay } from "./social";
 import { saveRemoteGame, deleteRemoteGame, downloadRemoteGame } from "./admin";
 import { signIn, signUp, signOut, loadUser, onAuth, type AuthUser } from "./auth";
@@ -15,12 +17,15 @@ import AdminPanel from "./AdminPanel";
 import { fetchRemoteGames, loadRemoteGameFiles, setRemoteMeta, setFavorite, remoteFileUrl } from "./remote";
 import type { Game, GameFile, Visibility } from "./types";
 
-type View = "home" | "library" | "favorites" | "recent" | "detail" | "player" | "settings" | "ranking" | "profile";
+type View = "home" | "library" | "favorites" | "recent" | "detail" | "player" | "settings" | "ranking" | "profile" | "pad";
 type InstallPromptEvent = Event & { prompt: () => Promise<void>; userChoice: Promise<{ outcome: "accepted" | "dismissed" }> };
 const blank = { name: "", description: "", category: "Indie", genre: "Ação", platform: "HTML5", isPublic: true, visibility: "public" as Visibility };
 export default function App() {
   const [games, setGames] = useState<Game[]>([]);
-  const [view, setView] = useState<View>("home");
+  const padParam = useMemo(() => new URLSearchParams(location.search).get("comando") ?? "", []);
+  const [view, setView] = useState<View>(padParam ? "pad" : "home");
+  const [padOn, setPadOn] = useState(false);
+  const [padShow, setPadShow] = useState(false);
   const [selected, setSelected] = useState<Game | null>(null);
   const [profileName, setProfileName] = useState("");
   const [query, setQuery] = useState("");
@@ -229,7 +234,7 @@ export default function App() {
       else await document.exitFullscreen();
     } catch { setError("O navegador não permitiu o modo de ecrã inteiro."); }
   }
-  function backToLibrary() { if (document.fullscreenElement) document.exitFullscreen().catch(() => {}); setView("detail"); }
+  function backToLibrary() { setPadOn(false); setPadShow(false); if (document.fullscreenElement) document.exitFullscreen().catch(() => {}); setView("detail"); }
   const title = view === "ranking" ? "Ranking" : view === "settings" ? "Administração" : view === "favorites" ? "Os meus favoritos" : view === "recent" ? "Jogados recentemente" : view === "library" ? "A minha biblioteca" : "Descobrir jogos";
   const navItems: { id: View; label: string; icon: typeof Gamepad2 }[] = [
     { id:"home", label:"Início", icon:Gamepad2 }, { id:"library", label:"Biblioteca", icon:Library },
@@ -237,18 +242,23 @@ export default function App() {
     { id:"ranking", label:"Ranking", icon:Star }
   ];
   if (user) navItems.push({ id:"profile", label:"O meu perfil", icon:UserRound });
+  navItems.push({ id:"pad", label:"Comando", icon:Smartphone });
   if (isAdmin) navItems.push({ id:"settings", label:"Administração", icon:Settings });
+
+  if (view === "pad") return <PadController initialCode={padParam} onExit={() => { history.replaceState(null, "", location.pathname); setView("home"); }}/>;
 
   if (view === "player" && selected) return <main className="player-page">
     <header className="player-bar">
       <button className="icon-btn" onClick={backToLibrary} title="Voltar"><ArrowLeft /></button>
       <div className="player-title"><Gamepad2 size={19}/><strong>{selected.name}</strong><span className="live-dot"/> <small>A jogar</small></div>
       <div className="player-actions">
+        <button className="icon-btn" onClick={() => { setPadOn(true); setPadShow(true); }} title="Usar o telemóvel como comando"><Smartphone/></button>
         <button className="icon-btn" onClick={() => frame.current?.contentWindow?.location.reload()} title="Reiniciar"><RotateCcw/></button>
         <button className="primary-btn compact" onClick={toggleFullscreen}>{isFullscreen ? <Minimize/> : <Maximize/>}<span>{isFullscreen ? "Sair do ecrã inteiro" : "Ecrã inteiro"}</span></button>
       </div>
     </header>
     <section className="game-stage"><iframe ref={frame} title={`Jogar ${selected.name}`} src={playUrl} sandbox={coreFor(selected.platform) ? "allow-scripts allow-same-origin allow-pointer-lock allow-forms allow-modals allow-downloads" : "allow-scripts allow-pointer-lock allow-forms allow-modals allow-downloads"} allow="fullscreen; autoplay; gamepad; accelerometer; gyroscope; picture-in-picture" /></section>
+    {padOn && <PadHost frame={frame} show={padShow} onHide={() => setPadShow(false)}/>}
     <footer className="player-footer"><span><span className="live-dot"/> Jogo em execução</span><span>Se o jogo não carregar, verifica os ficheiros e as dependências externas.</span></footer>
   </main>;
 

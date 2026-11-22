@@ -93,8 +93,9 @@ export function makePlayableDocument(game: Game) {
     };
     source = source.replace(/\b(src|href)=(["'])(.*?)\2/gi, (_m, attr, quote, value) => `${attr}=${quote}${escapeAttr(resolve(value))}${quote}`);
     const csp = `<meta http-equiv="Content-Security-Policy" content="default-src 'self' blob: data: https:; script-src 'self' 'unsafe-inline' 'unsafe-eval' blob: https:; style-src 'self' 'unsafe-inline' blob: https:; img-src 'self' blob: data: https:; media-src 'self' blob: data: https:; connect-src https: wss:; font-src 'self' blob: data: https:; object-src 'none'; base-uri 'none'">`;
-    if (/<head[^>]*>/i.test(source)) source = source.replace(/<head[^>]*>/i, m => m + csp);
-    else source = csp + source;
+    const pad = `<script>addEventListener("message",function(e){var d=e.data;if(!d||d.gh!=="key"||e.source!==window.parent)return;var o={key:d.key,code:d.code,bubbles:true,cancelable:true};var ev=new KeyboardEvent(d.type==="u"?"keyup":"keydown",o);try{Object.defineProperty(ev,"keyCode",{get:function(){return d.kc}});Object.defineProperty(ev,"which",{get:function(){return d.kc}})}catch(x){}var t=document.querySelector("canvas")||document.activeElement||document.body;t.dispatchEvent(ev)});</script>`;
+    if (/<head[^>]*>/i.test(source)) source = source.replace(/<head[^>]*>/i, m => m + csp + pad);
+    else source = csp + pad + source;
     return { url: URL.createObjectURL(new Blob([source], { type: "text/html" })), urls: [...urls.values()] };
   });
 }

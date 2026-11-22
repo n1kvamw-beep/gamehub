@@ -13,6 +13,7 @@
 </head>
 <body>
 <div id="game"></div>
+<script>addEventListener("message",function(e){var d=e.data;if(!d||d.gh!=="key"||e.source!==window.parent)return;var ev=new KeyboardEvent(d.type==="u"?"keyup":"keydown",{key:d.key,code:d.code,bubbles:true,cancelable:true});try{Object.defineProperty(ev,"keyCode",{get:function(){return d.kc}});Object.defineProperty(ev,"which",{get:function(){return d.kc}})}catch(x){}var t=document.querySelector("canvas")||document.activeElement||document.body;t.dispatchEvent(ev)});</script>
 <div id="msg">A preparar o emulador…</div>
 <script>
 (function () {
