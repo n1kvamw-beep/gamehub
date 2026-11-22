@@ -109,3 +109,10 @@ export async function downloadRemoteGame(game: Game) {
   link.remove();
   setTimeout(() => URL.revokeObjectURL(url), 1000);
 }
+
+// Muda a visibilidade (público / família / privado) de vários jogos de uma vez.
+export async function setGamesVisibility(ids: string[], visibility: Visibility) {
+  if (!ids.length) return;
+  const { error } = await need().from("games").update({ visibility, is_public: visibility === "public" }).in("id", ids);
+  if (error) throw new Error(error.message);
+}
