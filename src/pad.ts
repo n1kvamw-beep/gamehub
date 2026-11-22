@@ -1,9 +1,9 @@
 import { supabase } from "./supabase";
 
 // Botões do comando virtual e as teclas que cada um simula no jogo da TV.
-export type PadButton = "up" | "down" | "left" | "right" | "a" | "b" | "x" | "y" | "l" | "r" | "start" | "select";
+export type PadButton = "up" | "down" | "left" | "right" | "a" | "b" | "x" | "y" | "l" | "r" | "start" | "select" | "home";
 type Key = { key: string; code: string; kc: number };
-export const PAD_KEYS: Record<PadButton, Key[]> = {
+export const PAD_KEYS: Record<Exclude<PadButton, "home">, Key[]> = {
   up: [{ key: "ArrowUp", code: "ArrowUp", kc: 38 }, { key: "w", code: "KeyW", kc: 87 }],
   down: [{ key: "ArrowDown", code: "ArrowDown", kc: 40 }, { key: "s", code: "KeyS", kc: 83 }],
   left: [{ key: "ArrowLeft", code: "ArrowLeft", kc: 37 }, { key: "a", code: "KeyA", kc: 65 }],
@@ -31,7 +31,7 @@ export function openPadHost(code: string, onButton: (type: "d" | "u", b: PadButt
   ch.on("broadcast", { event: EVENT }, ({ payload }) => {
     const p = payload as { t?: string; b?: PadButton };
     if (p.t === "hello") return onConnect();
-    if ((p.t === "d" || p.t === "u") && p.b && PAD_KEYS[p.b]) { onConnect(); onButton(p.t, p.b); }
+    if ((p.t === "d" || p.t === "u") && p.b && (p.b === "home" || PAD_KEYS[p.b])) { onConnect(); onButton(p.t, p.b); }
   }).subscribe();
   return () => { sb.removeChannel(ch); };
 }

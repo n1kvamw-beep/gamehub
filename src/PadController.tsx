@@ -2,9 +2,9 @@ import { useEffect, useRef, useState } from "react";
 import { ArrowLeft } from "lucide-react";
 import { openPadClient, padAvailable, type PadButton } from "./pad";
 
-type Props = { initialCode: string; onExit: () => void };
+type Props = { initialCode: string; onExit: () => void; onShowTv: () => void };
 
-export default function PadController({ initialCode, onExit }: Props) {
+export default function PadController({ initialCode, onExit, onShowTv }: Props) {
   const [input, setInput] = useState(initialCode);
   const [code, setCode] = useState(initialCode.length === 5 ? initialCode.toUpperCase() : "");
   const [online, setOnline] = useState(false);
@@ -33,9 +33,11 @@ export default function PadController({ initialCode, onExit }: Props) {
     <p>Na TV, abre um jogo e carrega em <strong>Comando</strong>. Escreve aqui o código que aparecer.</p>
     <input value={input} maxLength={5} autoCapitalize="characters" autoComplete="off" placeholder="ABCDE" onChange={e => setInput(e.target.value.toUpperCase())}/>
     <button className="primary-btn" disabled={input.length !== 5} onClick={() => setCode(input)}>Ligar</button>
+    <p className="muted">Estás na TV? Mostra um código para ligares o telemóvel.</p>
+    <button className="secondary-btn" onClick={onShowTv}>Mostrar código nesta TV</button>
   </main>;
   return <main className="pad-page pad-live">
-    <div className="pad-top"><button className="icon-btn" onClick={() => setCode("")}><ArrowLeft/></button><span className={online ? "pad-on" : "pad-off"}>{online ? `Ligado · ${code}` : "A ligar..."}</span></div>
+    <div className="pad-top"><button className="icon-btn" onClick={() => setCode("")}><ArrowLeft/></button><span className={online ? "pad-on" : "pad-off"}>{online ? `Ligado · ${code}` : "A ligar..."}</span><span style={{ marginLeft: "auto" }}><Btn b="home" label="⌂" cls="small home"/></span></div>
     <div className="pad-shoulders"><Btn b="l" label="L" cls="shoulder"/><Btn b="r" label="R" cls="shoulder"/></div>
     <div className="pad-layout">
       <div className="dpad">

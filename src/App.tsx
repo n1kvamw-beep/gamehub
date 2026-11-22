@@ -4,6 +4,7 @@ import {
   Play, Maximize, Minimize, RotateCcw, ArrowLeft, Trash2, Pencil, Star,
   FolderOpen, Github, Link as LinkIcon, Gamepad, Sparkles, AlertCircle, CheckCircle2, Download, LogIn, LogOut, UserRound, Smartphone
 } from "lucide-react";
+import { newPadCode } from "./pad";
 import { filesFromUpload, makePlayableDocument, isRomGame, coreFor, guessPlatform, EMU_CORES } from "./importer";
 import GameSocial from "./Social";
 import RankingPanel from "./Ranking";
@@ -24,8 +25,11 @@ export default function App() {
   const [games, setGames] = useState<Game[]>([]);
   const padParam = useMemo(() => new URLSearchParams(location.search).get("comando") ?? "", []);
   const [view, setView] = useState<View>(padParam ? "pad" : "home");
-  const [padOn, setPadOn] = useState(false);
-  const [padShow, setPadShow] = useState(false);
+  const tvMode = useMemo(() => new URLSearchParams(location.search).get("tv") === "1", []);
+  const [padCode] = useState(newPadCode);
+  const [padOn, setPadOn] = useState(tvMode);
+  const [padShow, setPadShow] = useState(tvMode);
+  useEffect(() => { document.body.classList.toggle("tv-mode", padOn); return () => document.body.classList.remove("tv-mode"); }, [padOn]);
   const [selected, setSelected] = useState<Game | null>(null);
   const [profileName, setProfileName] = useState("");
   const [query, setQuery] = useState("");
@@ -234,7 +238,8 @@ export default function App() {
       else await document.exitFullscreen();
     } catch { setError("O navegador não permitiu o modo de ecrã inteiro."); }
   }
-  function backToLibrary() { setPadOn(false); setPadShow(false); if (document.fullscreenElement) document.exitFullscreen().catch(() => {}); setView("detail"); }
+  function goHome() { if (document.fullscreenElement) document.exitFullscreen().catch(() => {}); setSelected(null); setView("home"); }
+  function backToLibrary() { if (document.fullscreenElement) document.exitFullscreen().catch(() => {}); setView("detail"); }
   const title = view === "ranking" ? "Ranking" : view === "settings" ? "Administração" : view === "favorites" ? "Os meus favoritos" : view === "recent" ? "Jogados recentemente" : view === "library" ? "A minha biblioteca" : "Descobrir jogos";
   const navItems: { id: View; label: string; icon: typeof Gamepad2 }[] = [
     { id:"home", label:"Início", icon:Gamepad2 }, { id:"library", label:"Biblioteca", icon:Library },
@@ -245,7 +250,7 @@ export default function App() {
   navItems.push({ id:"pad", label:"Comando", icon:Smartphone });
   if (isAdmin) navItems.push({ id:"settings", label:"Administração", icon:Settings });
 
-  if (view === "pad") return <PadController initialCode={padParam} onExit={() => { history.replaceState(null, "", location.pathname); setView("home"); }}/>;
+  if (view === "pad") return <PadController initialCode={padParam} onShowTv={() => { setPadOn(true); setPadShow(true); setView("home"); }} onExit={() => { history.replaceState(null, "", location.pathname); setView("home"); }}/>;
 
   if (view === "player" && selected) return <main className="player-page">
     <header className="player-bar">
@@ -258,11 +263,12 @@ export default function App() {
       </div>
     </header>
     <section className="game-stage"><iframe ref={frame} title={`Jogar ${selected.name}`} src={playUrl} sandbox={coreFor(selected.platform) ? "allow-scripts allow-same-origin allow-pointer-lock allow-forms allow-modals allow-downloads" : "allow-scripts allow-pointer-lock allow-forms allow-modals allow-downloads"} allow="fullscreen; autoplay; gamepad; accelerometer; gyroscope; picture-in-picture" /></section>
-    {padOn && <PadHost frame={frame} show={padShow} onHide={() => setPadShow(false)}/>}
+    {padOn && <PadHost code={padCode} frame={frame} show={padShow} onHide={() => setPadShow(false)} inGame onHome={goHome}/>}
     <footer className="player-footer"><span><span className="live-dot"/> Jogo em execução</span><span>Se o jogo não carregar, verifica os ficheiros e as dependências externas.</span></footer>
   </main>;
 
   return <div className="app-shell">
+    {padOn && <PadHost code={padCode} frame={frame} show={padShow} onHide={() => setPadShow(false)} inGame={false} onHome={goHome}/>}
     <aside className={`sidebar ${mobileNav ? "open" : ""}`}>
       <div className="brand"><div className="brand-mark"><Gamepad2 size={23}/></div><span>Game<span>Hub</span></span><button className="mobile-close icon-btn" onClick={() => setMobileNav(false)}><X/></button></div>
       <div className="side-label">MENU PRINCIPAL</div>
