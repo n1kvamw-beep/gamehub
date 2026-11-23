@@ -59,7 +59,7 @@ export default function PadController({ initialCode, onExit, onShowTv, top, defa
     <p className="muted">Estás na TV? Mostra um código para ligares o telemóvel.</p>
     <button className="secondary-btn" onClick={onShowTv}>Mostrar código nesta TV</button>
   </main>;
-  return <main className="pad-page pad-live">
+  return <main className={`pad-page pad-live${top ? " pad-over" : ""}`}>
     <div className="pad-top"><button className="icon-btn" onClick={() => setCode("")}><ArrowLeft/></button><span className={online ? "pad-on" : "pad-off"}>{online ? `J${player} · ${code}` : "A ligar..."}</span><span style={{ marginLeft: "auto" }}><Btn b="home" label="⌂" cls="small home"/></span></div>
     {top}
     <div className="pad-players-live">{picker}</div>
