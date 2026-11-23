@@ -57,7 +57,9 @@ export async function saveRemoteGame(input: { existing: Game | null; form: GameF
       const single = input.files.length === 1 && isRomGame(input.files);
       const body = single ? input.files[0].blob : await zipFiles(input.files);
       const ext = single ? (input.files[0].path.split(".").pop() || "iso").toLowerCase() : "zip";
-      const path = `${id}/${Date.now()}.${ext}`;
+      // Conjuntos de arcade guardam o nome original (o MAME precisa do nome do jogo, ex.: pacman.zip).
+      const arcadeName = single && ext === "zip" ? input.files[0].path.replace(/^.*\//, "").replace(/[^\w.-]+/g, "_") : "";
+      const path = arcadeName ? `${id}/${Date.now()}/${arcadeName}` : `${id}/${Date.now()}.${ext}`;
       restricted = isRomGame(input.files);
       const type = single ? "application/octet-stream" : "application/zip";
       obsolete.push({ bucket: oldRestricted ? ROM_BUCKET : BUCKET, path: filePath });

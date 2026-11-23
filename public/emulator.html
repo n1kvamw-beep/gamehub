@@ -45,7 +45,7 @@
   function fail(t) { msg.className = ""; msg.textContent = t; }
   var q = new URLSearchParams(location.search);
   var core = q.get("core"), url = q.get("url"), name = q.get("name") || "Jogo";
-  var allowed = ["psp", "psx", "segaCD", "segaSaturn", "3do", "segaMD", "nes", "snes", "n64", "gb", "gba", "nds"];
+  var allowed = ["psp", "psx", "segaCD", "segaSaturn", "3do", "segaMD", "nes", "snes", "n64", "gb", "gba", "nds", "mame2003", "arcade"];
   if (allowed.indexOf(core) < 0) return fail("Consola não suportada.");
   if (!url || !/^https:\/\//i.test(url)) return fail("Ficheiro do jogo em falta.");
 

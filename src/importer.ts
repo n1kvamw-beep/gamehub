@@ -5,7 +5,7 @@ import type { Game, GameFile } from "./types";
 const MAX_FILES = 1500;
 const MAX_TOTAL = 300 * 1024 * 1024;
 const MAX_ROM = 4 * 1024 * 1024 * 1024;
-const ROM_RE = /\.(iso|cso|chd|pbp|cue|bin|img|mdf|md|gen|smd|nes|sfc|smc|z64|n64|v64|gb|gbc|gba|nds)$/i;
+const ROM_RE = /\.(iso|cso|chd|pbp|cue|bin|img|mdf|md|gen|smd|nes|sfc|smc|z64|n64|v64|gb|gbc|gba|nds|zip)$/i;
 export const isRomPath = (p: string) => ROM_RE.test(p);
 /** Jogo de emulador: tem imagem de disco e nenhum HTML de entrada. */
 export const isRomGame = (files: { path: string }[]) => !files.some(f => /\.html?$/i.test(f.path)) && files.some(f => isRomPath(f.path));
@@ -13,7 +13,8 @@ export const isRomGame = (files: { path: string }[]) => !files.some(f => /\.html
 export const EMU_CORES: Record<string, string> = {
   "PSP": "psp", "PlayStation 1": "psx", "Sega CD": "segaCD", "Sega Saturn": "segaSaturn", "3DO": "3do",
   "Mega Drive": "segaMD", "NES": "nes", "Super Nintendo": "snes", "Nintendo 64": "n64",
-  "Game Boy": "gb", "Game Boy Advance": "gba", "Nintendo DS": "nds"
+  "Game Boy": "gb", "Game Boy Advance": "gba", "Nintendo DS": "nds",
+  "Arcade (MAME)": "mame2003", "Arcade (FBNeo)": "arcade"
 };
 const EXT_PLATFORM: Record<string, string> = {
   md: "Mega Drive", gen: "Mega Drive", smd: "Mega Drive", nes: "NES", sfc: "Super Nintendo", smc: "Super Nintendo",
@@ -21,6 +22,8 @@ const EXT_PLATFORM: Record<string, string> = {
 };
 /** Adivinha a plataforma pela extensão; ISO/BIN/CUE são ambíguos (devolve undefined). */
 export function guessPlatform(files: { path: string }[]): string | undefined {
+  // Um .zip guardado inteiro (sem HTML nem imagens) é um conjunto de ROMs de arcade.
+  if (files.length === 1 && /\.zip$/i.test(files[0].path)) return "Arcade (MAME)";
   for (const f of files) { const p = EXT_PLATFORM[f.path.split(".").pop()?.toLowerCase() || ""]; if (p) return p; }
   return undefined;
 }
@@ -62,6 +65,12 @@ export async function filesFromUpload(fileList: FileList | File[]): Promise<Game
   for (const file of Array.from(fileList)) {
     if (file.name.toLowerCase().endsWith(".zip")) {
       const zipped = unzipSync(new Uint8Array(await file.arrayBuffer()));
+      // Conjunto de ROMs de arcade (MAME/FBNeo): o ZIP tem de ficar inteiro, o nome do ficheiro é o nome do jogo.
+      const names = Object.keys(zipped).filter(n => !n.endsWith("/"));
+      if (files.length === 0 && Array.from(fileList).length === 1 && names.length && !names.some(n => /\.(html?|js|css|json|png|jpe?g|webp|svg|mp3|ogg|wasm)$/i.test(n) || ROM_RE.test(n) && !/\.zip$/i.test(n))) {
+        files.push({ path: safePath(file.name.replace(/[^\w.-]+/g, "_")), blob: file, type: "application/zip" });
+        continue;
+      }
       for (const [path, data] of Object.entries(zipped)) {
         if (path.endsWith("/")) continue;
         const safe = safePath(path);
