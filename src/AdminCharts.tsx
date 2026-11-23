@@ -1,6 +1,34 @@
 import { useEffect, useMemo, useState } from "react";
 import { supabase } from "./supabase";
 import type { Game } from "./types";
+import { r2Usage, type R2Usage } from "./r2";
+
+const fmtBytes = (n: number) => n >= 1024 ** 3 ? `${(n / 1024 ** 3).toFixed(2)} GB` : n >= 1024 ** 2 ? `${(n / 1024 ** 2).toFixed(1)} MB` : `${Math.max(0, Math.round(n / 1024))} KB`;
+const LABELS: Record<string, string> = { games: "Jogos", covers: "Capas", roms: "ROMs privadas", avatars: "Perfis (fotos)", outros: "Outros" };
+
+// Espaço usado no Cloudflare R2 (plano grátis: 10 GB).
+function StorageCard() {
+  const [u, setU] = useState<R2Usage | "err" | null>(null);
+  const [msg, setMsg] = useState("");
+  useEffect(() => { r2Usage().then(setU).catch(e => { setMsg(e instanceof Error ? e.message : ""); setU("err"); }); }, []);
+  if (u === null) return <div className="chart-card"><h3>Armazenamento (Cloudflare R2)</h3><p className="chart-empty">A calcular…</p></div>;
+  if (u === "err") return <div className="chart-card"><h3>Armazenamento (Cloudflare R2)</h3><p className="chart-empty">Não consegui ler o espaço. {msg}</p></div>;
+  const sum: Record<string, { bytes: number; count: number }> = {};
+  const add = (g: Record<string, { bytes: number; count: number }>) => { for (const [k, v] of Object.entries(g)) { if (k === "error") continue; const e = sum[k] || (sum[k] = { bytes: 0, count: 0 }); e.bytes += v.bytes; e.count += v.count; } };
+  add(u.files as never); add(u.roms as never);
+  const used = Object.values(sum).reduce((n, v) => n + v.bytes, 0);
+  const files = Object.values(sum).reduce((n, v) => n + v.count, 0);
+  const pct = Math.min(100, (used / u.limitBytes) * 100);
+  const romErr = "error" in u.roms && typeof u.roms.error === "string" ? u.roms.error : "";
+  return <div className="chart-card" style={{ gridColumn: "1 / -1" }}>
+    <h3>Armazenamento (Cloudflare R2)</h3>
+    <p style={{ margin: "4px 0 8px" }}><b>{fmtBytes(used)}</b> usados de {fmtBytes(u.limitBytes)} · livres <b>{fmtBytes(Math.max(0, u.limitBytes - used))}</b> · {files} ficheiros</p>
+    <div className="bar-track" role="progressbar" aria-valuemin={0} aria-valuemax={100} aria-valuenow={Math.round(pct)}><div className="bar-fill" style={{ width: `${pct}%`, background: pct > 85 ? "#ef4444" : undefined }}/></div>
+    <ul className="legend" style={{ marginTop: 10 }}>{Object.entries(sum).sort((a, b) => b[1].bytes - a[1].bytes).map(([k, v], i) =>
+      <li key={k}><span className="dot" style={{ background: COLORS[i % COLORS.length] }}/>{LABELS[k] || k} ({v.count})<b>{fmtBytes(v.bytes)}</b></li>)}</ul>
+    {romErr && <p className="chart-empty">{romErr}</p>}
+  </div>;
+}
 
 const COLORS = ["#7865f5", "#ef81c2", "#79b9ff", "#52d69b", "#f2b84b", "#b47dff"];
 type Row = { label: string; value: number };
@@ -133,6 +161,7 @@ export default function AdminCharts({ games }: { games: Game[] }) {
       <div><small>COMENTÁRIOS</small><strong>{d.comments}</strong></div>
     </div>
     <div className="chart-grid">
+      <StorageCard/>
       <Donut title="Quem pode ver os jogos" parts={[
         { label: "Público", value: d.vis.public, color: COLORS[3] },
         { label: "Família", value: d.vis.family, color: COLORS[0] },

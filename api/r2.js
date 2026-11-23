@@ -12,14 +12,14 @@ const sha = data => crypto.createHash("sha256").update(data).digest("hex");
 const enc = s => encodeURIComponent(s).replace(/[!'()*]/g, c => "%" + c.charCodeAt(0).toString(16).toUpperCase());
 
 // URL pré-assinado (AWS Signature V4) para o R2.
-function presign(method, key, expires = 900, bucket = BUCKET, size = null) {
+function presign(method, key, expires = 900, bucket = BUCKET, size = null, extra = {}) {
   const host = `${ACCOUNT}.r2.cloudflarestorage.com`;
-  const path = "/" + [bucket, ...key.split("/")].map(enc).join("/");
+  const path = "/" + [bucket, ...(key ? key.split("/") : [])].map(enc).join("/");
   const now = new Date().toISOString().replace(/[:-]|\.\d{3}/g, "");
   const date = now.slice(0, 8), scope = `${date}/auto/s3/aws4_request`;
   const query = {
     "X-Amz-Algorithm": "AWS4-HMAC-SHA256", "X-Amz-Credential": `${KEY_ID}/${scope}`, "X-Amz-Date": now,
-    "X-Amz-Expires": String(expires), "X-Amz-SignedHeaders": size == null ? "host" : "content-length;host",
+    "X-Amz-Expires": String(expires), "X-Amz-SignedHeaders": size == null ? "host" : "content-length;host", ...extra,
   };
   const canonQuery = Object.keys(query).sort().map(k => `${enc(k)}=${enc(query[k])}`).join("&");
   const headers = (size == null ? "" : `content-length:${size}\n`) + `host:${host}\n`;
@@ -64,6 +64,28 @@ async function romUrl(req, gameId) {
   return presign("GET", path.slice(6), 6 * 3600, ROMS_BUCKET);
 }
 
+// Soma o tamanho dos ficheiros de um bucket, agrupado pela primeira pasta da chave.
+async function bucketUsage(bucket) {
+  const groups = {};
+  let token = "";
+  for (let page = 0; page < 60; page++) {
+    const extra = { "list-type": "2", "max-keys": "1000", ...(token ? { "continuation-token": token } : {}) };
+    const res = await fetch(presign("GET", "", 120, bucket, null, extra));
+    if (!res.ok) throw new Error(`O Cloudflare recusou a leitura do bucket ${bucket} (${res.status}). O token precisa de acesso a este bucket.`);
+    const xml = await res.text();
+    for (const m of xml.matchAll(/<Contents>([\s\S]*?)<\/Contents>/g)) {
+      const key = /<Key>([\s\S]*?)<\/Key>/.exec(m[1])?.[1] || "";
+      const size = Number(/<Size>(\d+)<\/Size>/.exec(m[1])?.[1] || 0);
+      const group = key.includes("/") ? key.split("/")[0] : "outros";
+      groups[group] = groups[group] || { bytes: 0, count: 0 };
+      groups[group].bytes += size; groups[group].count += 1;
+    }
+    token = /<IsTruncated>true<\/IsTruncated>/.test(xml) ? (/<NextContinuationToken>([\s\S]*?)<\/NextContinuationToken>/.exec(xml)?.[1] || "") : "";
+    if (!token) break;
+  }
+  return groups;
+}
+
 const validKey = k => typeof k === "string" && k.length < 300 && /^[\w./ -]+$/.test(k) && !k.includes("..") && !k.startsWith("/");
 
 export default async function handler(req, res) {
@@ -94,6 +116,10 @@ export default async function handler(req, res) {
       return res.status(200).json({ key, url: presign("PUT", key, 600, BUCKET, size) });
     }
     if (!(await requireAdmin(req))) return res.status(403).json({ error: "Só o admin pode fazer isto." });
+    if (body.action === "usage") {
+      const [files, roms] = await Promise.all([bucketUsage(BUCKET), bucketUsage(ROMS_BUCKET).catch(e => ({ error: e.message }))]);
+      return res.status(200).json({ limitBytes: 10 * 1024 ** 3, files, roms });
+    }
     if (body.action === "sign") {
       if (!validKey(body.key)) return res.status(400).json({ error: "Nome de ficheiro inválido." });
       return res.status(200).json({ url: presign("PUT", body.key, 900, body.private ? ROMS_BUCKET : BUCKET) });

@@ -77,3 +77,11 @@ export async function r2DeleteImage(key: string) {
 export function imageUrl(key?: string | null) {
   return key && base ? `${base}/${key.split("/").map(encodeURIComponent).join("/")}` : "";
 }
+
+export type UsageGroup = Record<string, { bytes: number; count: number }>;
+export type R2Usage = { limitBytes: number; files: UsageGroup; roms: UsageGroup & { error?: never } | { error: string } };
+
+// Espaço usado no Cloudflare (só admin).
+export async function r2Usage(): Promise<R2Usage> {
+  return (await api({ action: "usage" }, true)) as unknown as R2Usage;
+}
