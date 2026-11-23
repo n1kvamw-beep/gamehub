@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from "react";
 import { Smartphone, X } from "lucide-react";
-import { openPadHost, PAD_KEYS, EMU_KEYS, type PadButton } from "./pad";
+import { openPadHost, keysFor, MAX_PLAYERS, type PadButton } from "./pad";
 import { moveFocus, clickFocused, goBack, scrollPage, type Dir } from "./tvnav";
 
 type Props = {
@@ -12,21 +12,24 @@ const DIRS: Partial<Record<PadButton, Dir>> = { up: "up", down: "down", left: "l
 
 // Na TV: mostra o código de ligação. Dentro de um jogo passa os botões ao jogo; no resto do site navega.
 export default function PadHost({ code, frame, show, onHide, inGame, emulator, onHome }: Props) {
-  const [connected, setConnected] = useState(false);
-  const held = useRef(new Set<PadButton>());
+  const [players, setPlayers] = useState<number[]>([]);
+  const seen = useRef(new Set<number>());
+  const connected = players.length > 0;
+  const held = useRef(new Map<string, { b: Exclude<PadButton, "home">; n: number }>());
   const repeat = useRef<{ t?: number; i?: number }>({});
   const live = useRef({ inGame, onHome, emulator: !!emulator });
   live.current = { inGame, onHome, emulator: !!emulator };
 
   useEffect(() => {
     const stopRepeat = () => { window.clearTimeout(repeat.current.t); window.clearInterval(repeat.current.i); };
-    const handle = (type: "d" | "u", b: PadButton) => {
+    const handle = (type: "d" | "u", b: PadButton, n: number) => {
       if (b === "home") { if (type === "d") live.current.onHome(); return; }
       if (live.current.inGame) {
         const win = frame.current?.contentWindow;
         if (!win) return;
-        if (type === "d") held.current.add(b); else held.current.delete(b);
-        for (const k of (live.current.emulator ? EMU_KEYS : PAD_KEYS)[b]) win.postMessage({ gh: "key", type, key: k.key, code: k.code, kc: k.kc }, "*");
+        const id = `${n}:${b}`;
+        if (type === "d") held.current.set(id, { b, n }); else held.current.delete(id);
+        for (const k of keysFor(n, b, live.current.emulator, seen.current.size > 1)) win.postMessage({ gh: "key", type, key: k.key, code: k.code, kc: k.kc }, "*");
         return;
       }
       // Fora dos jogos: navegar no site.
@@ -41,11 +44,14 @@ export default function PadHost({ code, frame, show, onHide, inGame, emulator, o
       else if (b === "r") scrollPage("down");
       else if (b === "start") live.current.onHome();
     };
-    const close = openPadHost(code, handle, () => setConnected(true));
+    const close = openPadHost(code, handle, n => {
+      if (seen.current.has(n)) return;
+      seen.current.add(n); setPlayers([...seen.current].sort());
+    });
     return () => {
       close(); stopRepeat();
       const win = frame.current?.contentWindow;
-      if (win) for (const b of [...held.current]) if (b !== "home") for (const k of [...PAD_KEYS[b], ...EMU_KEYS[b]]) win.postMessage({ gh: "key", type: "u", key: k.key, code: k.code, kc: k.kc }, "*");
+      if (win) for (const { b, n } of [...held.current.values()]) for (const multi of [true, false]) for (const k of keysFor(n, b, live.current.emulator, multi)) win.postMessage({ gh: "key", type: "u", key: k.key, code: k.code, kc: k.kc }, "*");
     };
   }, [code, frame]);
 
@@ -59,7 +65,7 @@ export default function PadHost({ code, frame, show, onHide, inGame, emulator, o
       <p>No telemóvel, abre o GameHub, escolhe <strong>Comando</strong> no menu e escreve este código:</p>
       <div className="pad-code">{code}</div>
       <p className="muted">Ou abre diretamente: <strong>{url}</strong></p>
-      <div className={`pad-status ${connected ? "ok" : ""}`}>{connected ? "✓ Telemóvel ligado. Fecha esta janela com B (ou toca no X)." : "À espera do telemóvel..."}</div>
+      <div className={`pad-status ${connected ? "ok" : ""}`}>{connected ? `✓ ${players.length > 1 ? `Jogadores ligados: ${players.join(", ")}` : "Telemóvel ligado"}. Outros telemóveis podem entrar com o mesmo código (até ${MAX_PLAYERS} jogadores). Fecha esta janela com B.` : "À espera do telemóvel..."}</div>
     </div>
   </div>;
 }
