@@ -77,7 +77,7 @@ export async function searchPeople(query: string): Promise<PersonHit[]> {
   await r2Base();
   const q = query.trim().replace(/[,()*%_\\]/g, " ").trim();
   const run = (cols: string) => {
-    let req = sb.from("profiles").select("*").limit(30);
+    let req = sb.from("profiles").select("*").neq("role", "admin").limit(30);
     if (q) req = req.or(cols.split(",").map(c => `${c}.ilike.%${q}%`).join(","));
     return req.order("username", { ascending: true });
   };
