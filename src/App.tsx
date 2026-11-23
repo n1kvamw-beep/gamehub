@@ -2,7 +2,7 @@ import { useEffect, useMemo, useRef, useState, type FormEvent } from "react";
 import {
   Gamepad2, Search, Plus, Library, Heart, Clock3, Settings, Menu, X, Upload,
   Play, Maximize, Minimize, RotateCcw, ArrowLeft, Trash2, Pencil, Star,
-  FolderOpen, Github, Link as LinkIcon, Gamepad, Sparkles, AlertCircle, CheckCircle2, Download, LogIn, LogOut, UserRound, Smartphone, Users
+  FolderOpen, Github, Link as LinkIcon, Gamepad, Sparkles, AlertCircle, CheckCircle2, Download, LogIn, LogOut, UserRound, Smartphone, Users, Globe
 } from "lucide-react";
 import { newPadCode } from "./pad";
 import { filesFromUpload, makePlayableDocument, isRomGame, coreFor, guessPlatform, EMU_CORES } from "./importer";
@@ -10,6 +10,8 @@ import GameSocial from "./Social";
 import RankingPanel from "./Ranking";
 import ProfilePanel from "./Profile";
 import PadHost from "./PadHost";
+import OnlineHost from "./OnlineHost";
+import RoomGuest from "./RoomGuest";
 import Avatar from "./Avatar";
 import PeoplePanel from "./People";
 import PadController from "./PadController";
@@ -20,13 +22,16 @@ import AdminPanel from "./AdminPanel";
 import { fetchRemoteGames, loadRemoteGameFiles, setRemoteMeta, setFavorite, remoteFileUrl } from "./remote";
 import type { Game, GameFile, Visibility } from "./types";
 
-type View = "home" | "library" | "favorites" | "recent" | "detail" | "player" | "settings" | "ranking" | "profile" | "pad" | "people";
+type View = "home" | "library" | "favorites" | "recent" | "detail" | "player" | "settings" | "ranking" | "profile" | "pad" | "people" | "room";
 type InstallPromptEvent = Event & { prompt: () => Promise<void>; userChoice: Promise<{ outcome: "accepted" | "dismissed" }> };
 const blank = { name: "", description: "", category: "Indie", genre: "Ação", platform: "HTML5", isPublic: true, visibility: "public" as Visibility };
 export default function App() {
   const [games, setGames] = useState<Game[]>([]);
   const padParam = useMemo(() => new URLSearchParams(location.search).get("comando") ?? "", []);
-  const [view, setView] = useState<View>(padParam ? "pad" : "home");
+  const roomParam = useMemo(() => new URLSearchParams(location.search).get("sala") ?? "", []);
+  const [view, setView] = useState<View>(roomParam ? "room" : padParam ? "pad" : "home");
+  const [roomOn, setRoomOn] = useState(false);
+  const [roomShow, setRoomShow] = useState(false);
   const tvMode = useMemo(() => new URLSearchParams(location.search).get("tv") === "1", []);
   const [padCode] = useState(newPadCode);
   const [padOn, setPadOn] = useState(tvMode);
@@ -251,7 +256,10 @@ export default function App() {
   ];
   if (user) navItems.push({ id:"profile", label:"O meu perfil", icon:UserRound });
   navItems.push({ id:"pad", label:"Comando", icon:Smartphone });
+  navItems.push({ id:"room", label:"Entrar numa sala", icon:Globe });
   if (isAdmin) navItems.push({ id:"settings", label:"Administração", icon:Settings });
+
+  if (view === "room") return <RoomGuest initialCode={roomParam} onExit={() => { history.replaceState(null, "", location.pathname); setView("home"); }}/>;
 
   if (view === "pad") return <PadController initialCode={padParam} onShowTv={() => { setPadOn(true); setPadShow(true); setView("home"); }} onExit={() => { history.replaceState(null, "", location.pathname); setView("home"); }}/>;
 
@@ -261,12 +269,14 @@ export default function App() {
       <div className="player-title"><Gamepad2 size={19}/><strong>{selected.name}</strong><span className="live-dot"/> <small>A jogar</small></div>
       <div className="player-actions">
         <button className="icon-btn" onClick={() => { setPadOn(true); setPadShow(true); }} title="Usar o telemóvel como comando"><Smartphone/></button>
+        {coreFor(selected.platform) && <button className="icon-btn" onClick={() => { setRoomOn(true); setRoomShow(true); }} title="Jogar online com um amigo"><Globe/></button>}
         <button className="icon-btn" onClick={() => frame.current?.contentWindow?.location.reload()} title="Reiniciar"><RotateCcw/></button>
         <button className="primary-btn compact" onClick={toggleFullscreen}>{isFullscreen ? <Minimize/> : <Maximize/>}<span>{isFullscreen ? "Sair do ecrã inteiro" : "Ecrã inteiro"}</span></button>
       </div>
     </header>
     <section className="game-stage"><iframe ref={frame} title={`Jogar ${selected.name}`} src={playUrl} sandbox={coreFor(selected.platform) ? "allow-scripts allow-same-origin allow-pointer-lock allow-forms allow-modals allow-downloads" : "allow-scripts allow-pointer-lock allow-forms allow-modals allow-downloads"} allow="fullscreen; autoplay; gamepad; accelerometer; gyroscope; picture-in-picture" /></section>
-    {padOn && <PadHost code={padCode} frame={frame} show={padShow} onHide={() => setPadShow(false)} inGame emulator={!!coreFor(selected.platform)} onHome={goHome}/>}
+    {roomOn && <OnlineHost code={padCode} frame={frame} show={roomShow} onHide={() => setRoomShow(false)}/>}
+    {(padOn || roomOn) && <PadHost code={padCode} frame={frame} show={padShow && padOn} onHide={() => setPadShow(false)} inGame emulator={!!coreFor(selected.platform)} onHome={goHome}/>}
     <footer className="player-footer"><span><span className="live-dot"/> Jogo em execução</span><span>Se o jogo não carregar, verifica os ficheiros e as dependências externas.</span></footer>
   </main>;
 

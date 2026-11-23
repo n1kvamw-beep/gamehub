@@ -2,13 +2,13 @@ import { useEffect, useRef, useState } from "react";
 import { ArrowLeft } from "lucide-react";
 import { openPadClient, padAvailable, MAX_PLAYERS, type PadButton } from "./pad";
 
-type Props = { initialCode: string; onExit: () => void; onShowTv: () => void };
+type Props = { initialCode: string; onExit: () => void; onShowTv: () => void; top?: React.ReactNode; defaultPlayer?: number };
 
-export default function PadController({ initialCode, onExit, onShowTv }: Props) {
+export default function PadController({ initialCode, onExit, onShowTv, top, defaultPlayer }: Props) {
   const [input, setInput] = useState(initialCode);
   const [code, setCode] = useState(initialCode.length === 5 ? initialCode.toUpperCase() : "");
   const [online, setOnline] = useState(false);
-  const [player, setPlayer] = useState(() => { try { return Math.min(MAX_PLAYERS, Math.max(1, Number(localStorage.getItem("gh-player")) || 1)); } catch { return 1; } });
+  const [player, setPlayer] = useState(() => { try { return Math.min(MAX_PLAYERS, Math.max(1, defaultPlayer ?? (Number(localStorage.getItem("gh-player")) || 1))); } catch { return 1; } });
   const pick = (n: number) => { setPlayer(n); try { localStorage.setItem("gh-player", String(n)); } catch { /* ignora */ } };
   const client = useRef<ReturnType<typeof openPadClient> | null>(null);
 
@@ -18,6 +18,23 @@ export default function PadController({ initialCode, onExit, onShowTv }: Props) 
     client.current = c;
     return () => { c.close(); client.current = null; setOnline(false); };
   }, [code, player]);
+
+  // Teclado (útil no PC): setas, Z/X/C/V, Q/E, Enter e Shift.
+  useEffect(() => {
+    if (!code) return;
+    const map: Record<string, PadButton> = { ArrowUp: "up", ArrowDown: "down", ArrowLeft: "left", ArrowRight: "right", z: "a", x: "b", c: "x", v: "y", q: "l", e: "r", Enter: "start", Shift: "select" };
+    const down = new Set<string>();
+    const on = (t: "d" | "u") => (e: KeyboardEvent) => {
+      const b = map[e.key.length === 1 ? e.key.toLowerCase() : e.key];
+      if (!b || (e.target instanceof HTMLInputElement)) return;
+      e.preventDefault();
+      if (t === "d") { if (down.has(b)) return; down.add(b); } else down.delete(b);
+      client.current?.send(t, b);
+    };
+    const d = on("d"), u = on("u");
+    addEventListener("keydown", d); addEventListener("keyup", u);
+    return () => { removeEventListener("keydown", d); removeEventListener("keyup", u); };
+  }, [code]);
 
   const picker = <div className="pad-players" role="group" aria-label="Jogador">{Array.from({ length: MAX_PLAYERS }, (_, i) => i + 1).map(n =>
     <button key={n} className={n === player ? "on" : ""} onClick={() => pick(n)}>J{n}</button>)}</div>;
@@ -44,6 +61,7 @@ export default function PadController({ initialCode, onExit, onShowTv }: Props) 
   </main>;
   return <main className="pad-page pad-live">
     <div className="pad-top"><button className="icon-btn" onClick={() => setCode("")}><ArrowLeft/></button><span className={online ? "pad-on" : "pad-off"}>{online ? `J${player} · ${code}` : "A ligar..."}</span><span style={{ marginLeft: "auto" }}><Btn b="home" label="⌂" cls="small home"/></span></div>
+    {top}
     <div className="pad-players-live">{picker}</div>
     <div className="pad-shoulders"><Btn b="l" label="L" cls="shoulder"/><Btn b="r" label="R" cls="shoulder"/></div>
     <div className="pad-layout">
