@@ -6,8 +6,9 @@ import AdminCharts from "./AdminCharts";
 import AdminGames from "./AdminGames";
 import UsersPanel from "./UsersPanel";
 import StoragePanel from "./StoragePanel";
+import AdminNews from "./AdminNews";
 
-const TABS = [["overview", "Visão geral"], ["games", "Jogos"], ["users", "Utilizadores"], ["storage", "Armazenamento"], ["account", "Conta"]] as const;
+const TABS = [["overview", "Visão geral"], ["games", "Jogos"], ["users", "Utilizadores"], ["storage", "Armazenamento"], ["news", "Novidades"], ["account", "Conta"]] as const;
 type Tab = typeof TABS[number][0];
 
 type Props = {
@@ -28,6 +29,7 @@ export default function AdminPanel({ games, user, onSignOut, onEdit, onChanged }
     {tab === "overview" && <AdminCharts games={games}/>}
     {tab === "games" && <AdminGames games={games} onEdit={onEdit} onChanged={onChanged}/>}
     {tab === "users" && <UsersPanel meId={user?.id ?? ""}/>}
+    {tab === "news" && <AdminNews/>}
     {tab === "storage" && <StoragePanel games={games} onChanged={onChanged}/>}
     {tab === "account" && <>
       <div className="info-panel">

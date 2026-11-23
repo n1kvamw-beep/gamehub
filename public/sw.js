@@ -17,3 +17,17 @@ self.addEventListener("fetch", event => {
     return response;
   }).catch(() => caches.match(request).then(cached => cached || caches.match("/index.html"))));
 });
+
+self.addEventListener("push", event => {
+  let d = {};
+  try { d = event.data ? event.data.json() : {}; } catch (e) {}
+  event.waitUntil(self.registration.showNotification(d.title || "GameHub", { body: d.body || "", icon: "/icons/gamehub-192.svg", badge: "/icons/gamehub-192.svg", data: { url: d.url || "/" } }));
+});
+self.addEventListener("notificationclick", event => {
+  event.notification.close();
+  const url = (event.notification.data && event.notification.data.url) || "/";
+  event.waitUntil(self.clients.matchAll({ type: "window", includeUncontrolled: true }).then(list => {
+    for (const c of list) if ("focus" in c) return c.focus();
+    return self.clients.openWindow(url);
+  }));
+});

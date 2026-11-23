@@ -11,6 +11,7 @@ import RankingPanel from "./Ranking";
 import ProfilePanel from "./Profile";
 import PadHost from "./PadHost";
 import OnlineHost from "./OnlineHost";
+import NewsBell from "./NewsBell";
 import RoomGuest from "./RoomGuest";
 import Avatar from "./Avatar";
 import PeoplePanel from "./People";
@@ -290,7 +291,7 @@ export default function App() {
     </aside>
     {mobileNav && <div className="scrim" onClick={() => setMobileNav(false)}/>}
     <main className="main-area">
-      <header className="topbar"><button className="mobile-menu icon-btn" onClick={() => setMobileNav(true)}><Menu/></button><div className="breadcrumbs">GameHub <span>/</span> {view === "detail" ? selected?.name : view === "player" ? "Jogador" : title}</div><div className="top-actions">{installPrompt && !isStandalone && <button className="install-btn" onClick={installApp}><Download size={16}/><span>Instalar app</span></button>}<label className="search-box"><Search size={17}/><input placeholder="Pesquisar jogos..." value={query} onChange={e => setQuery(e.target.value)}/><kbd>⌘ K</kbd></label>{isAdmin && <button className="primary-btn" onClick={openAdd}><Plus size={18}/>Adicionar jogo</button>}</div></header>
+      <header className="topbar"><button className="mobile-menu icon-btn" onClick={() => setMobileNav(true)}><Menu/></button><div className="breadcrumbs">GameHub <span>/</span> {view === "detail" ? selected?.name : view === "player" ? "Jogador" : title}</div><div className="top-actions">{installPrompt && !isStandalone && <button className="install-btn" onClick={installApp}><Download size={16}/><span>Instalar app</span></button>}<NewsBell loggedIn={!!user} onNeedLogin={() => { openAuth(); setAuthError("Entra na tua conta para receber notificações."); }}/><label className="search-box"><Search size={17}/><input placeholder="Pesquisar jogos..." value={query} onChange={e => setQuery(e.target.value)}/><kbd>⌘ K</kbd></label>{isAdmin && <button className="primary-btn" onClick={openAdd}><Plus size={18}/>Adicionar jogo</button>}</div></header>
       {view === "detail" && selected ? <section className="content detail-content">
         <button className="back-link" onClick={() => setView("library")}><ArrowLeft size={16}/> Voltar à biblioteca</button>
         <div className="detail-hero">
