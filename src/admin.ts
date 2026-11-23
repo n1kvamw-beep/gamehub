@@ -1,3 +1,4 @@
+import { uuid } from "./compat";
 import { zipSync } from "fflate";
 import { supabase } from "./supabase";
 import type { Game, GameFile, Visibility } from "./types";
@@ -43,7 +44,7 @@ async function removeFiles(items: Stored[]) {
 export async function saveRemoteGame(input: { existing: Game | null; form: GameForm; files: GameFile[]; cover: string }) {
   const sb = need();
   const old = input.existing;
-  const id = old?.id ?? crypto.randomUUID();
+  const id = old?.id ?? uuid();
   let filePath = old?.remote?.filePath;
   let coverPath: string | null = old?.remote?.coverPath ?? null;
   const oldRestricted = !!old?.remote?.restricted;

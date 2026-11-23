@@ -1,3 +1,4 @@
+import { uuid } from "./compat";
 import { unzipSync } from "fflate";
 import type { Game, GameFile } from "./types";
 
@@ -75,7 +76,7 @@ export async function filesFromUpload(fileList: FileList | File[]): Promise<Game
 }
 export function makeGame(input: Omit<Game, "id" | "addedAt" | "favorite" | "playCount" | "entry"> & { files: GameFile[] }): Game {
   const entry = validate(input.files);
-  return { ...input, id: crypto.randomUUID(), entry, addedAt: Date.now(), favorite: false, playCount: 0 };
+  return { ...input, id: uuid(), entry, addedAt: Date.now(), favorite: false, playCount: 0 };
 }
 export function makePlayableDocument(game: Game) {
   const urls = new Map<string, string>();
