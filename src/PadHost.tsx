@@ -1,22 +1,22 @@
 import { useEffect, useRef, useState } from "react";
 import { Smartphone, X } from "lucide-react";
-import { openPadHost, PAD_KEYS, type PadButton } from "./pad";
+import { openPadHost, PAD_KEYS, EMU_KEYS, type PadButton } from "./pad";
 import { moveFocus, clickFocused, goBack, scrollPage, type Dir } from "./tvnav";
 
 type Props = {
   code: string; frame: React.RefObject<HTMLIFrameElement>; show: boolean; onHide: () => void;
-  inGame: boolean; onHome: () => void;
+  inGame: boolean; emulator?: boolean; onHome: () => void;
 };
 
 const DIRS: Partial<Record<PadButton, Dir>> = { up: "up", down: "down", left: "left", right: "right" };
 
 // Na TV: mostra o código de ligação. Dentro de um jogo passa os botões ao jogo; no resto do site navega.
-export default function PadHost({ code, frame, show, onHide, inGame, onHome }: Props) {
+export default function PadHost({ code, frame, show, onHide, inGame, emulator, onHome }: Props) {
   const [connected, setConnected] = useState(false);
   const held = useRef(new Set<PadButton>());
   const repeat = useRef<{ t?: number; i?: number }>({});
-  const live = useRef({ inGame, onHome });
-  live.current = { inGame, onHome };
+  const live = useRef({ inGame, onHome, emulator: !!emulator });
+  live.current = { inGame, onHome, emulator: !!emulator };
 
   useEffect(() => {
     const stopRepeat = () => { window.clearTimeout(repeat.current.t); window.clearInterval(repeat.current.i); };
@@ -26,7 +26,7 @@ export default function PadHost({ code, frame, show, onHide, inGame, onHome }: P
         const win = frame.current?.contentWindow;
         if (!win) return;
         if (type === "d") held.current.add(b); else held.current.delete(b);
-        for (const k of PAD_KEYS[b]) win.postMessage({ gh: "key", type, key: k.key, code: k.code, kc: k.kc }, "*");
+        for (const k of (live.current.emulator ? EMU_KEYS : PAD_KEYS)[b]) win.postMessage({ gh: "key", type, key: k.key, code: k.code, kc: k.kc }, "*");
         return;
       }
       // Fora dos jogos: navegar no site.
@@ -45,7 +45,7 @@ export default function PadHost({ code, frame, show, onHide, inGame, onHome }: P
     return () => {
       close(); stopRepeat();
       const win = frame.current?.contentWindow;
-      if (win) for (const b of [...held.current]) if (b !== "home") for (const k of PAD_KEYS[b]) win.postMessage({ gh: "key", type: "u", key: k.key, code: k.code, kc: k.kc }, "*");
+      if (win) for (const b of [...held.current]) if (b !== "home") for (const k of [...PAD_KEYS[b], ...EMU_KEYS[b]]) win.postMessage({ gh: "key", type: "u", key: k.key, code: k.code, kc: k.kc }, "*");
     };
   }, [code, frame]);
 

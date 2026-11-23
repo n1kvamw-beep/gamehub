@@ -18,6 +18,16 @@ export const PAD_KEYS: Record<Exclude<PadButton, "home">, Key[]> = {
   select: [{ key: "Shift", code: "ShiftRight", kc: 16 }],
 };
 
+// Teclas por defeito do EmulatorJS (para as consolas): evita enviar teclas a mais que ativam outros botões.
+export const EMU_KEYS: Record<Exclude<PadButton, "home">, Key[]> = {
+  up: [{ key: "ArrowUp", code: "ArrowUp", kc: 38 }], down: [{ key: "ArrowDown", code: "ArrowDown", kc: 40 }],
+  left: [{ key: "ArrowLeft", code: "ArrowLeft", kc: 37 }], right: [{ key: "ArrowRight", code: "ArrowRight", kc: 39 }],
+  a: [{ key: "z", code: "KeyZ", kc: 90 }], b: [{ key: "x", code: "KeyX", kc: 88 }],
+  x: [{ key: "a", code: "KeyA", kc: 65 }], y: [{ key: "s", code: "KeyS", kc: 83 }],
+  l: [{ key: "q", code: "KeyQ", kc: 81 }], r: [{ key: "e", code: "KeyE", kc: 69 }],
+  start: [{ key: "Enter", code: "Enter", kc: 13 }], select: [{ key: "v", code: "KeyV", kc: 86 }],
+};
+
 const EVENT = "k";
 const channelName = (code: string) => `gamehub-pad-${code.trim().toUpperCase()}`;
 export const newPadCode = () => Array.from(crypto.getRandomValues(new Uint8Array(5)), n => "ABCDEFGHJKLMNPQRSTUVWXYZ23456789"[n % 32]).join("");

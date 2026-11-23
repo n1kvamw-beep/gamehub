@@ -31,7 +31,7 @@
   window.EJS_gameName = name;
   window.EJS_pathtodata = "https://cdn.emulatorjs.org/stable/data/";
   window.EJS_startOnLoaded = true;
-  window.EJS_threads = !!window.crossOriginIsolated;
+  window.EJS_threads = !!window.crossOriginIsolated && ["psp", "psx", "n64", "nds", "segaSaturn"].indexOf(core) >= 0;
   window.EJS_onGameStart = function () { msg.className = "hide"; };
   msg.textContent = "A descarregar o jogo… (pode demorar nos ficheiros grandes)";
 

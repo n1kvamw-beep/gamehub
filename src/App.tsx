@@ -266,7 +266,7 @@ export default function App() {
       </div>
     </header>
     <section className="game-stage"><iframe ref={frame} title={`Jogar ${selected.name}`} src={playUrl} sandbox={coreFor(selected.platform) ? "allow-scripts allow-same-origin allow-pointer-lock allow-forms allow-modals allow-downloads" : "allow-scripts allow-pointer-lock allow-forms allow-modals allow-downloads"} allow="fullscreen; autoplay; gamepad; accelerometer; gyroscope; picture-in-picture" /></section>
-    {padOn && <PadHost code={padCode} frame={frame} show={padShow} onHide={() => setPadShow(false)} inGame onHome={goHome}/>}
+    {padOn && <PadHost code={padCode} frame={frame} show={padShow} onHide={() => setPadShow(false)} inGame emulator={!!coreFor(selected.platform)} onHome={goHome}/>}
     <footer className="player-footer"><span><span className="live-dot"/> Jogo em execução</span><span>Se o jogo não carregar, verifica os ficheiros e as dependências externas.</span></footer>
   </main>;
 
