@@ -237,3 +237,9 @@ input,textarea,select{font-size:16px}
 .pe-colors button.on{border-color:#fff}
 .pe-colors input[type=color]{width:34px;height:34px;padding:0;border:0;background:none}
 @media(max-width:600px){.profile-banner{height:110px}.profile-actions{position:static;margin-top:10px}.profile-avatar{width:84px;height:84px;margin-top:-42px}}
+
+/* Pesquisa de pessoas */
+.people-search{width:100%;max-width:520px;margin-bottom:18px}
+.rank-item.person{cursor:default}
+.person-main{display:flex;align-items:center;gap:14px;flex:1;min-width:0;background:none;border:0;color:inherit;text-align:left;padding:0}
+.person .rank-name small{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}

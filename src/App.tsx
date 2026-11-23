@@ -2,7 +2,7 @@ import { useEffect, useMemo, useRef, useState, type FormEvent } from "react";
 import {
   Gamepad2, Search, Plus, Library, Heart, Clock3, Settings, Menu, X, Upload,
   Play, Maximize, Minimize, RotateCcw, ArrowLeft, Trash2, Pencil, Star,
-  FolderOpen, Github, Link as LinkIcon, Gamepad, Sparkles, AlertCircle, CheckCircle2, Download, LogIn, LogOut, UserRound, Smartphone
+  FolderOpen, Github, Link as LinkIcon, Gamepad, Sparkles, AlertCircle, CheckCircle2, Download, LogIn, LogOut, UserRound, Smartphone, Users
 } from "lucide-react";
 import { newPadCode } from "./pad";
 import { filesFromUpload, makePlayableDocument, isRomGame, coreFor, guessPlatform, EMU_CORES } from "./importer";
@@ -11,6 +11,7 @@ import RankingPanel from "./Ranking";
 import ProfilePanel from "./Profile";
 import PadHost from "./PadHost";
 import Avatar from "./Avatar";
+import PeoplePanel from "./People";
 import PadController from "./PadController";
 import { registerPlay } from "./social";
 import { saveRemoteGame, deleteRemoteGame, downloadRemoteGame } from "./admin";
@@ -19,7 +20,7 @@ import AdminPanel from "./AdminPanel";
 import { fetchRemoteGames, loadRemoteGameFiles, setRemoteMeta, setFavorite, remoteFileUrl } from "./remote";
 import type { Game, GameFile, Visibility } from "./types";
 
-type View = "home" | "library" | "favorites" | "recent" | "detail" | "player" | "settings" | "ranking" | "profile" | "pad";
+type View = "home" | "library" | "favorites" | "recent" | "detail" | "player" | "settings" | "ranking" | "profile" | "pad" | "people";
 type InstallPromptEvent = Event & { prompt: () => Promise<void>; userChoice: Promise<{ outcome: "accepted" | "dismissed" }> };
 const blank = { name: "", description: "", category: "Indie", genre: "Ação", platform: "HTML5", isPublic: true, visibility: "public" as Visibility };
 export default function App() {
@@ -245,7 +246,8 @@ export default function App() {
   const navItems: { id: View; label: string; icon: typeof Gamepad2 }[] = [
     { id:"home", label:"Início", icon:Gamepad2 }, { id:"library", label:"Biblioteca", icon:Library },
     { id:"favorites", label:"Favoritos", icon:Heart }, { id:"recent", label:"Recentes", icon:Clock3 },
-    { id:"ranking", label:"Ranking", icon:Star }
+    { id:"ranking", label:"Ranking", icon:Star },
+    { id:"people", label:"Pessoas", icon:Users }
   ];
   if (user) navItems.push({ id:"profile", label:"O meu perfil", icon:UserRound });
   navItems.push({ id:"pad", label:"Comando", icon:Smartphone });
@@ -292,9 +294,10 @@ export default function App() {
           {games.length === 0 ? <div className="empty-state"><div className="empty-icon"><Gamepad2 size={35}/></div><h2>{isAdmin ? "A biblioteca começa aqui" : "Ainda não há jogos"}</h2><p>{isAdmin ? "Adiciona um jogo HTML ou um ZIP. Fica guardado no Supabase e aparece para toda a gente." : "Volta mais tarde: ainda não foram publicados jogos."}</p>{isAdmin && <button className="primary-btn" onClick={openAdd}><Upload size={17}/>Importar um jogo</button>}</div> : <><GameSection title="Adicionados recentemente" subtitle="Os últimos jogos que chegaram à tua coleção." games={recent} onOpen={g=>{setSelected(g);setView("detail")}} onFavorite={toggleFavorite}/>{favorites.length>0 && <GameSection title="Os teus favoritos" subtitle="Os jogos que marcaste como especiais." games={favorites} onOpen={g=>{setSelected(g);setView("detail")}} onFavorite={toggleFavorite}/>}<GameSection title="Toda a biblioteca" subtitle="Continua a tua aventura." games={filtered.slice(0,8)} onOpen={g=>{setSelected(g);setView("detail")}} onFavorite={toggleFavorite}/></>}
         </>}
         {view === "profile" && profileName && <ProfilePanel username={profileName} user={user} onNeedLogin={() => { openAuth(); setAuthError("Entra na tua conta para participar."); }} onOpenGame={id => { const g = games.find(x => x.id === id); if (g) { setSelected(g); setView("detail"); } }} onProfileChanged={() => { loadUser().then(setUser); }}/>}
+        {view === "people" && <PeoplePanel user={user} onNeedLogin={() => { openAuth(); setAuthError("Entra na tua conta para seguir."); }} onOpenProfile={n => { setProfileName(n); setView("profile"); }}/>}
         {view === "ranking" && <RankingPanel games={games} onOpen={g => { setSelected(g); setView("detail"); }}/>}
         {view === "settings" && <AdminPanel games={games} user={user} onSignOut={() => { signOut(); }} onEdit={g => openEdit(g)} onChanged={async () => { await refresh(); }}/>}
-        {view !== "home" && view !== "settings" && view !== "ranking" && view !== "profile" && <><div className="page-heading"><div><div className="eyebrow">A TUA COLEÇÃO</div><h1>{title}</h1><p>{filtered.length} {filtered.length === 1 ? "jogo encontrado" : "jogos encontrados"}</p></div>{isAdmin && <button className="primary-btn" onClick={openAdd}><Plus size={18}/>Adicionar jogo</button>}</div><div className="filter-row"><label className="filter-select">Género <select value={genre} onChange={e=>setGenre(e.target.value)}><option>Todos</option>{["Ação","Aventura","Corrida","Puzzle","Estratégia","RPG","Simulação","Indie","Outro"].map(g=><option key={g}>{g}</option>)}</select></label><label className="filter-select">Ordenar por <select value={sort} onChange={e=>setSort(e.target.value)}><option value="newest">Mais recentes</option><option value="oldest">Mais antigos</option><option value="name">Nome (A–Z)</option></select></label></div><div className="game-grid">{filtered.map(g=><GameCard key={g.id} game={g} onOpen={()=>{setSelected(g);setView("detail")}} onFavorite={()=>toggleFavorite(g)}/>)}</div>{filtered.length===0 && <div className="empty-state compact-empty"><div className="empty-icon"><Search/></div><h2>Nenhum jogo encontrado</h2><p>Experimenta alterar a pesquisa ou os filtros.</p><button className="secondary-btn" onClick={()=>{setQuery("");setGenre("Todos")}}>Limpar filtros</button></div>}</>}
+        {view !== "home" && view !== "settings" && view !== "ranking" && view !== "profile" && view !== "people" && <><div className="page-heading"><div><div className="eyebrow">A TUA COLEÇÃO</div><h1>{title}</h1><p>{filtered.length} {filtered.length === 1 ? "jogo encontrado" : "jogos encontrados"}</p></div>{isAdmin && <button className="primary-btn" onClick={openAdd}><Plus size={18}/>Adicionar jogo</button>}</div><div className="filter-row"><label className="filter-select">Género <select value={genre} onChange={e=>setGenre(e.target.value)}><option>Todos</option>{["Ação","Aventura","Corrida","Puzzle","Estratégia","RPG","Simulação","Indie","Outro"].map(g=><option key={g}>{g}</option>)}</select></label><label className="filter-select">Ordenar por <select value={sort} onChange={e=>setSort(e.target.value)}><option value="newest">Mais recentes</option><option value="oldest">Mais antigos</option><option value="name">Nome (A–Z)</option></select></label></div><div className="game-grid">{filtered.map(g=><GameCard key={g.id} game={g} onOpen={()=>{setSelected(g);setView("detail")}} onFavorite={()=>toggleFavorite(g)}/>)}</div>{filtered.length===0 && <div className="empty-state compact-empty"><div className="empty-icon"><Search/></div><h2>Nenhum jogo encontrado</h2><p>Experimenta alterar a pesquisa ou os filtros.</p><button className="secondary-btn" onClick={()=>{setQuery("");setGenre("Todos")}}>Limpar filtros</button></div>}</>}
       </section>}
       {error && <div className="toast error"><AlertCircle size={17}/>{error}<button onClick={()=>setError("")}><X size={15}/></button></div>}
       {notice && <div className="toast success"><CheckCircle2 size={17}/>{notice}</div>}

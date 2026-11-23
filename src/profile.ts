@@ -68,3 +68,33 @@ export function coverUrl(path: string | null) {
   if (!path || !supabase) return null;
   return supabase.storage.from("game-files").getPublicUrl(path).data.publicUrl;
 }
+
+export type PersonHit = { id: string; username: string; displayName: string; status: string; accent: string; avatar: string; iFollow: boolean };
+
+// Procura utilizadores (sem texto: os mais recentes). Se as colunas novas ainda não existirem, procura só pelo utilizador.
+export async function searchPeople(query: string): Promise<PersonHit[]> {
+  const sb = need();
+  await r2Base();
+  const q = query.trim().replace(/[,()*%_\\]/g, " ").trim();
+  const run = (cols: string) => {
+    let req = sb.from("profiles").select("*").limit(30);
+    if (q) req = req.or(cols.split(",").map(c => `${c}.ilike.%${q}%`).join(","));
+    return req.order("username", { ascending: true });
+  };
+  let res = await run("username,display_name");
+  if (res.error) res = await run("username");
+  if (res.error) throw new Error(res.error.message);
+  const rows = (res.data ?? []) as Record<string, unknown>[];
+  const { data: s } = await sb.auth.getSession();
+  const me = s.session?.user.id;
+  let followed = new Set<string>();
+  if (me && rows.length) {
+    const { data: f } = await sb.from("follows").select("followee_id").eq("follower_id", me).in("followee_id", rows.map(r => r.id as string));
+    followed = new Set(((f ?? []) as { followee_id: string }[]).map(x => x.followee_id));
+  }
+  const str = (v: unknown) => (typeof v === "string" ? v : "");
+  return rows.map(r => ({
+    id: r.id as string, username: str(r.username), displayName: str(r.display_name), status: str(r.status_text),
+    accent: str(r.accent_color) || "#7865f5", avatar: imageUrl(r.avatar_path as string | null), iFollow: followed.has(r.id as string),
+  }));
+}
