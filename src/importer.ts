@@ -5,7 +5,7 @@ import type { Game, GameFile } from "./types";
 const MAX_FILES = 1500;
 const MAX_TOTAL = 300 * 1024 * 1024;
 const MAX_ROM = 4 * 1024 * 1024 * 1024;
-const ROM_RE = /\.(iso|cso|chd|pbp|cue|bin|img|mdf|md|gen|smd|nes|sfc|smc|z64|n64|v64|gb|gbc|gba|nds|zip)$/i;
+const ROM_RE = /\.(iso|cso|chd|pbp|cue|bin|img|mdf|md|gen|smd|nes|sfc|smc|z64|n64|v64|gb|gbc|gba|nds|sms|gg|32x|a26|a78|lnx|lyx|ngp|ngc|pce|vb|vboy|ws|wsc|col|cv|j64|jag|zip)$/i;
 export const isRomPath = (p: string) => ROM_RE.test(p);
 /** Jogo de emulador: tem imagem de disco e nenhum HTML de entrada. */
 export const isRomGame = (files: { path: string }[]) => !files.some(f => /\.html?$/i.test(f.path)) && files.some(f => isRomPath(f.path));
@@ -14,11 +14,14 @@ export const EMU_CORES: Record<string, string> = {
   "PSP": "psp", "PlayStation 1": "psx", "Sega CD": "segaCD", "Sega Saturn": "segaSaturn", "3DO": "3do",
   "Mega Drive": "segaMD", "NES": "nes", "Super Nintendo": "snes", "Nintendo 64": "n64",
   "Game Boy": "gb", "Game Boy Advance": "gba", "Nintendo DS": "nds",
-  "Arcade (MAME)": "mame2003", "Arcade (FBNeo)": "arcade"
+  "Arcade (MAME)": "mame2003", "Arcade (FBNeo)": "arcade",
+  "Master System": "segaMS", "Game Gear": "segaGG", "Sega 32X": "sega32x", "Atari 2600": "atari2600", "Atari 7800": "atari7800",
+  "Atari Lynx": "lynx", "Atari Jaguar": "jaguar", "PC Engine": "pce", "Neo Geo Pocket": "ngp", "WonderSwan": "ws", "Virtual Boy": "vb", "ColecoVision": "coleco"
 };
 const EXT_PLATFORM: Record<string, string> = {
   md: "Mega Drive", gen: "Mega Drive", smd: "Mega Drive", nes: "NES", sfc: "Super Nintendo", smc: "Super Nintendo",
-  z64: "Nintendo 64", n64: "Nintendo 64", v64: "Nintendo 64", gb: "Game Boy", gbc: "Game Boy", gba: "Game Boy Advance", nds: "Nintendo DS"
+  z64: "Nintendo 64", n64: "Nintendo 64", v64: "Nintendo 64", sms: "Master System", gg: "Game Gear", "32x": "Sega 32X", a26: "Atari 2600", a78: "Atari 7800", lnx: "Atari Lynx", lyx: "Atari Lynx",
+  jag: "Atari Jaguar", j64: "Atari Jaguar", pce: "PC Engine", ngp: "Neo Geo Pocket", ngc: "Neo Geo Pocket", ws: "WonderSwan", wsc: "WonderSwan", vb: "Virtual Boy", vboy: "Virtual Boy", col: "ColecoVision", cv: "ColecoVision", gb: "Game Boy", gbc: "Game Boy", gba: "Game Boy Advance", nds: "Nintendo DS"
 };
 /** Adivinha a plataforma pela extensão; ISO/BIN/CUE são ambíguos (devolve undefined). */
 export function guessPlatform(files: { path: string }[]): string | undefined {
