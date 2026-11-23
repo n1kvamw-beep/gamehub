@@ -16,7 +16,7 @@
 <script>addEventListener("message",function(e){var d=e.data;if(!d||d.gh!=="key"||e.source!==window.parent)return;var ev=new KeyboardEvent(d.type==="u"?"keyup":"keydown",{key:d.key,code:d.code,bubbles:true,cancelable:true});try{Object.defineProperty(ev,"keyCode",{get:function(){return d.kc}});Object.defineProperty(ev,"which",{get:function(){return d.kc}})}catch(x){}var t=document.querySelector("canvas")||document.activeElement||document.body;t.dispatchEvent(ev)});</script>
 <script>
 /* Sala online: expõe o ecrã e o som do emulador para o anfitrião os enviar por WebRTC. */
-(function(){
+(function(){ try {
   var oc = AudioNode.prototype.connect;
   AudioNode.prototype.connect = function (d) {
     var r = oc.apply(this, arguments);
@@ -36,7 +36,7 @@
     if (window.__ghAudio) window.__ghAudio.stream.getAudioTracks().forEach(function (t) { s.addTrack(t); });
     return s;
   };
-})();
+} catch (e) {} })();
 </script>
 <div id="msg">A preparar o emulador…</div>
 <script>
@@ -60,10 +60,18 @@
   var K = {2:{b:["n",78],y:["b",66],select:["y",89],start:["p",80],up:["i",73],down:["k",75],left:["j",74],right:["l",76],a:["m",77],x:["c",67],l:["u",85],r:["o",79]},
            3:{b:["2",50],y:["4",52],select:["8",56],start:["7",55],up:["t",84],down:["g",71],left:["f",70],right:["h",72],a:["1",49],x:["3",51],l:["5",53],r:["6",54]}};
   var IDX = {b:0,y:1,select:2,start:3,up:4,down:5,left:6,right:7,a:8,x:9,l:10,r:11};
-  var dc = {};
-  [2,3].forEach(function (p) { dc[p - 1] = {}; Object.keys(IDX).forEach(function (b) { dc[p - 1][IDX[b]] = { value: K[p][b][0], value2: "" }; }); });
-  window.EJS_defaultControls = dc;
-  window.EJS_onGameStart = function () { msg.className = "hide"; };
+  // Aplica as teclas dos jogadores 2 e 3 depois do jogo arrancar (sem mexer na configuração inicial do emulador).
+  function extraControls() {
+    try {
+      var em = window.EJS_emulator;
+      if (!em || !em.controls) return;
+      [2, 3].forEach(function (p) { Object.keys(IDX).forEach(function (b) {
+        if (!em.controls[p - 1]) em.controls[p - 1] = {};
+        em.controls[p - 1][IDX[b]] = { value: K[p][b][0], value2: "" };
+      }); });
+    } catch (x) {}
+  }
+  window.EJS_onGameStart = function () { msg.className = "hide"; extraControls(); };
   msg.textContent = "A descarregar o jogo… (pode demorar nos ficheiros grandes)";
 
   var s = document.createElement("script");
