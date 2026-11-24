@@ -303,3 +303,22 @@ input,textarea,select{font-size:16px}
 .notify-prompt{position:fixed;left:50%;transform:translateX(-50%);bottom:16px;z-index:55;width:min(560px,calc(100vw - 24px));display:flex;align-items:center;gap:12px;padding:12px 14px;background:#161b2e;border:1px solid #3a4160;border-radius:8px;box-shadow:0 10px 36px rgba(0,0,0,.5)}
 .notify-prompt>div{flex:1;display:grid;gap:2px;min-width:0}
 .notify-prompt span{font-size:13px;color:#b4b9cc}
+
+/* Abertura do app */
+.intro{position:fixed;top:0;left:0;right:0;bottom:0;z-index:9999;background:#05070b;display:flex;align-items:center;justify-content:center;overflow:hidden;animation:intro-in .25s ease both}
+.intro.leave{animation:intro-out .55s ease forwards}
+.intro-glow{position:absolute;left:50%;top:50%;width:90vmin;height:90vmin;margin:-45vmin 0 0 -45vmin;border-radius:50%;background:radial-gradient(circle,rgba(47,201,119,.38) 0%,rgba(47,201,119,0) 65%);opacity:0;animation:intro-glow 2.4s ease-out .1s both}
+.intro-stage{position:relative;display:flex;flex-direction:column;align-items:center;gap:22px}
+.intro-mark{width:96px;height:96px;border-radius:22px;display:flex;align-items:center;justify-content:center;color:#fff;background:linear-gradient(140deg,#3fd88a,#12794a);box-shadow:0 0 0 0 rgba(47,201,119,.6),0 12px 50px rgba(47,201,119,.45);transform:scale(.3);opacity:0;animation:intro-mark 1s cubic-bezier(.2,1.4,.4,1) .15s both}
+.intro-word{display:flex;font:700 clamp(40px,12vw,76px) 'Space Grotesk',sans-serif;letter-spacing:-2px;color:#eef0fa}
+.intro-word span{display:inline-block;opacity:0;transform:translateY(24px) scale(1.25);filter:blur(10px);animation:intro-letter .7s cubic-bezier(.2,.8,.2,1) both}
+.intro-word .hub{color:#8bf0b8}
+.intro-sweep{position:absolute;left:-30%;right:-30%;top:50%;height:3px;margin-top:20px;background:linear-gradient(90deg,transparent,#8bf0b8,transparent);box-shadow:0 0 24px 4px rgba(139,240,184,.7);transform:scaleX(0);opacity:0;animation:intro-sweep .9s ease-in-out 1.35s both}
+.intro-skip{position:absolute;bottom:28px;left:0;right:0;text-align:center;font-size:12px;color:#5e647c;opacity:0;animation:intro-skip .5s ease 1.2s both}
+@keyframes intro-in{from{opacity:0}to{opacity:1}}
+@keyframes intro-out{to{opacity:0;transform:scale(1.12)}}
+@keyframes intro-glow{0%{opacity:0;transform:scale(.4)}40%{opacity:1}100%{opacity:.55;transform:scale(1.15)}}
+@keyframes intro-mark{0%{opacity:0;transform:scale(.3) rotate(-12deg)}100%{opacity:1;transform:scale(1) rotate(0)}}
+@keyframes intro-letter{0%{opacity:0;transform:translateY(24px) scale(1.25);filter:blur(10px)}100%{opacity:1;transform:none;filter:blur(0)}}
+@keyframes intro-sweep{0%{opacity:0;transform:scaleX(0)}30%{opacity:1}100%{opacity:0;transform:scaleX(1)}}
+@keyframes intro-skip{to{opacity:1}}
