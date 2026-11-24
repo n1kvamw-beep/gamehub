@@ -322,3 +322,13 @@ input,textarea,select{font-size:16px}
 @keyframes intro-letter{0%{opacity:0;transform:translateY(24px) scale(1.25);filter:blur(10px)}100%{opacity:1;transform:none;filter:blur(0)}}
 @keyframes intro-sweep{0%{opacity:0;transform:scaleX(0)}30%{opacity:1}100%{opacity:0;transform:scaleX(1)}}
 @keyframes intro-skip{to{opacity:1}}
+
+/* Painel de novidades e aviso de notificações: ajustados ao telemóvel */
+@media (max-width:820px){
+  .news-wrap{position:static}
+  .news-panel{position:fixed;left:12px;right:12px;top:72px;width:auto;max-height:calc(100vh - 96px);max-height:calc(100dvh - 96px);z-index:61;padding:14px}
+  .news-backdrop{z-index:60;background:rgba(0,0,0,.45)}
+  .news-head{flex-wrap:wrap}
+  .news-head .secondary-btn{font-size:13px;padding:8px 12px}
+  .news-panel li b,.news-panel li p{overflow-wrap:anywhere}
+}
