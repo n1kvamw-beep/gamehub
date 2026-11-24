@@ -46,26 +46,79 @@ function best(names, query) {
   return exact.sort((a, b) => regionRank(a) + penal(a) - regionRank(b) - penal(b))[0];
 }
 
+const UA = { "User-Agent": "GameHub/1.0 (https://gamehub-five-henna.vercel.app)" };
+const tmo = ms => AbortSignal.timeout(Math.min(ms, 5000));
+const toData = async (url, headers = {}) => {
+  const r = await fetch(url, { headers: { ...UA, ...headers }, signal: tmo(9000), redirect: "follow" });
+  if (!r.ok) throw new Error("img " + r.status);
+  const buf = Buffer.from(await r.arrayBuffer());
+  if (buf.length < 500 || buf.length > 3.5 * 1024 * 1024) throw new Error("img tamanho");
+  const type = (r.headers.get("content-type") || "image/png").split(";")[0];
+  return `data:${type};base64,${buf.toString("base64")}`;
+};
+const cleanTitle = f => f.replace(/\s*\([^)]*\)|\s*\[[^\]]*\]/g, "").replace(/^(.*), (The|A|An)$/, "$2 $1").trim();
+
+// 1) libretro: lista oficial (procura aproximada) e, se falhar, tentativa direta no GitHub
+async function fromLibretro(name, systems, tried, direct) {
+  for (const sys of systems) {
+    let file = null;
+    if (!direct) { try { file = best(await listing(sys), name); } catch (e) { tried.push("libretro-lista:" + (e.message || "erro")); } if (!file) continue; }
+    const repo = sys.replace(/ /g, "_");
+    const cands = file ? [file] : ["", " (World)", " (USA)", " (Europe)", " (USA, Europe)"].map(x => name + x);
+    for (const c of cands) {
+      const f = c.replace(/[&*/:`<>?\\|]/g, "_");
+      for (const base of [`${HOST}/${encodeURIComponent(sys)}/Named_Boxarts/`, `https://raw.githubusercontent.com/libretro-thumbnails/${encodeURIComponent(repo)}/master/Named_Boxarts/`]) {
+        try { return { title: cleanTitle(c), full: c, cover: await toData(base + encodeURIComponent(f) + ".png"), source: "libretro" }; } catch { /* próxima */ }
+      }
+      if (file) break;
+    }
+  }
+  return null;
+}
+
+// 2) Wikipédia: imagem principal do artigo do jogo (capa da caixa)
+async function fromWikipedia(name, platform, tried) {
+  const plat = platform.replace(/\s*\(.*\)/, "");
+  const q = `${name} ${plat} video game`;
+  const url = "https://en.wikipedia.org/w/api.php?action=query&format=json&redirects=1&generator=search&gsrlimit=6&gsrsearch=" + encodeURIComponent(q) + "&prop=pageimages&piprop=thumbnail&pithumbsize=600";
+  try {
+    const r = await fetch(url, { headers: UA, signal: tmo(9000) });
+    if (!r.ok) throw new Error("wiki " + r.status);
+    const pages = Object.values((await r.json())?.query?.pages || {}).sort((a, b) => a.index - b.index);
+    const qn = norm(name).split(" ").filter(Boolean);
+    for (const p of pages) {
+      const tn = norm(p.title);
+      if (!p.thumbnail?.source || !qn.every(t => tn.split(" ").includes(t) || tn.includes(t))) continue;
+      if (/\.svg/i.test(p.thumbnail.source)) continue;
+      try { return { title: p.title.replace(/\s*\((video game|[^)]*game[^)]*)\)/i, "").trim(), full: p.title, cover: await toData(p.thumbnail.source), source: "wikipedia" }; } catch (e) { tried.push("wiki-img:" + e.message); }
+    }
+  } catch (e) { tried.push("wikipedia:" + (e.message || "erro")); }
+  return null;
+}
+
+// 3) RAWG (opcional): só se existir a variável RAWG_KEY no Vercel
+async function fromRawg(name, tried) {
+  const key = process.env.RAWG_KEY; if (!key) return null;
+  try {
+    const r = await fetch(`https://api.rawg.io/api/games?search=${encodeURIComponent(name)}&page_size=3&key=${key}`, { signal: tmo(9000) });
+    const g = (await r.json())?.results?.find(x => x.background_image);
+    if (g) return { title: g.name, full: g.name, cover: await toData(g.background_image), source: "rawg" };
+  } catch (e) { tried.push("rawg:" + (e.message || "erro")); }
+  return null;
+}
+
 export default async function handler(req, res) {
   res.setHeader("Cache-Control", "no-store");
   const name = String(req.query.name || "").slice(0, 200);
-  const systems = SYSTEMS[String(req.query.platform || "")];
+  const platform = String(req.query.platform || "");
+  const systems = SYSTEMS[platform];
   if (!name || !systems) return res.status(400).json({ error: "pedido inválido" });
+  const tried = [];
   try {
-    for (const sys of systems) {
-      let file = null;
-      try { file = best(await listing(sys), name); } catch { /* tenta tentativa direta abaixo */ }
-      if (!file) { // tentativa direta (nome já no formato No-Intro)
-        file = name.replace(/[&*/:`<>?\\|]/g, "_");
-      }
-      const img = await fetch(`${HOST}/${encodeURIComponent(sys)}/Named_Boxarts/${encodeURIComponent(file)}.png`, { signal: AbortSignal.timeout(8000) });
-      if (!img.ok) continue;
-      const buf = Buffer.from(await img.arrayBuffer());
-      if (buf.length > 3 * 1024 * 1024) continue;
-      return res.status(200).json({ title: file.replace(/\s*\([^)]*\)|\s*\[[^\]]*\]/g, "").replace(/^(.*), (The|A|An)$/, "$2 $1").trim(), full: file, cover: "data:image/png;base64," + buf.toString("base64") });
-    }
-    return res.status(404).json({ error: "não encontrado" });
+    const hit = (await fromLibretro(name, systems, tried, false)) || (await fromWikipedia(name, platform, tried)) || (await fromLibretro(name, systems, tried, true)) || (await fromRawg(name, tried));
+    if (hit) return res.status(200).json(hit);
+    return res.status(404).json({ error: "não encontrado", tried });
   } catch (e) {
-    return res.status(502).json({ error: "falha ao procurar" });
+    return res.status(502).json({ error: "falha ao procurar", tried });
   }
 }
