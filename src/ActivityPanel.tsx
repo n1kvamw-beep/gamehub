@@ -1,7 +1,8 @@
 import { useEffect, useMemo, useState } from "react";
-import { Radio, Play } from "lucide-react";
+import { Radio, Play, Bell } from "lucide-react";
 import { supabase } from "./supabase";
 import { watchPlaying, type Playing } from "./activity";
+import { inactiveCount, remindInactive } from "./news";
 
 type Ev = { id: number; game_id: string; user_id: string | null; created_at: string };
 type UG = { user_id: string; game_id: string; plays: number; last_played: string | null };
@@ -24,6 +25,20 @@ export default function ActivityPanel() {
   const [error, setError] = useState("");
   const [open, setOpen] = useState("");
   const [, tick] = useState(0);
+  const [days, setDays] = useState(7);
+  const [count, setCount] = useState<number | null>(null);
+  const [rTitle, setRTitle] = useState("Sentimos a tua falta! 🎮");
+  const [rBody, setRBody] = useState("Há jogos e novidades à tua espera no GameHub. Volta e joga uma partida!");
+  const [rMsg, setRMsg] = useState("");
+  const [rBusy, setRBusy] = useState(false);
+  useEffect(() => { setCount(null); inactiveCount(days).then(r => setCount(r.users)).catch(() => setCount(null)); }, [days]);
+  async function sendReminder() {
+    if (!confirm(`Enviar o lembrete a ${count ?? "todas as"} pessoa(s) sem jogar há ${days} dias?`)) return;
+    setRBusy(true); setRMsg("");
+    try { const r = await remindInactive(days, rTitle, rBody); setRMsg(`Lembrete enviado a ${r.sent} aparelho(s) de ${r.users} pessoa(s).`); }
+    catch (e) { setRMsg(e instanceof Error ? e.message : "Falha ao enviar."); }
+    finally { setRBusy(false); }
+  }
 
   async function load() {
     if (!supabase) return;
@@ -59,6 +74,16 @@ export default function ActivityPanel() {
     <h2>Atividade</h2>
     <p>Quem está a jogar agora e quantas vezes cada pessoa entrou em cada jogo.</p>
     {error && <div className="form-error">{error}</div>}
+
+    <h3 className="act-h"><Bell size={16}/> Lembrar quem não joga há tempo</h3>
+    <div className="remind-card">
+      <label>Sem jogar há <select value={days} onChange={e => setDays(Number(e.target.value))}>{[3, 7, 14, 30, 60].map(d => <option key={d} value={d}>{d} dias</option>)}</select></label>
+      <small>{count == null ? "A contar…" : `${count} ${count === 1 ? "pessoa recebe" : "pessoas recebem"} (só quem ativou os avisos).`}</small>
+      <input value={rTitle} maxLength={80} onChange={e => setRTitle(e.target.value)} placeholder="Título"/>
+      <textarea rows={2} value={rBody} maxLength={160} onChange={e => setRBody(e.target.value)} placeholder="Mensagem"/>
+      <button className="primary-btn" disabled={rBusy || !count || !rTitle.trim()} onClick={sendReminder}><Bell size={16}/>{rBusy ? "A enviar…" : "Enviar lembrete"}</button>
+      {rMsg && <p className="notice-ok">{rMsg}</p>}
+    </div>
 
     <h3 className="act-h"><Radio size={16}/> A jogar agora <span className="badge">{live.length}</span></h3>
     {live.length === 0 ? <p className="access-empty">Ninguém está a jogar neste momento.</p> :

@@ -372,3 +372,7 @@ input,textarea,select{font-size:16px}
 .act-row{width:100%;display:flex;align-items:center;justify-content:space-between;gap:10px;background:transparent;border:0;color:inherit;text-align:left;padding:0}
 .act-games{list-style:none;margin:8px 0 0;padding:8px 0 0;border-top:1px solid #222942;display:grid;gap:6px}
 .act-games li{display:flex;justify-content:space-between;gap:10px;font-size:13px;color:#b8bdd6}
+.remind-card{display:grid;gap:10px;padding:14px;border:1px solid #2a3150;border-radius:8px;background:#131829}
+.remind-card label{display:flex;align-items:center;gap:8px;font-size:14px}
+.remind-card input,.remind-card textarea,.remind-card select{background:#0d1020;border:1px solid #2a3150;border-radius:6px;color:inherit;padding:9px 10px}
+.remind-card textarea{resize:vertical}

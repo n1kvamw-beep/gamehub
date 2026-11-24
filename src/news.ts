@@ -59,3 +59,8 @@ export async function disablePush() {
   await supabase?.rpc("gh_drop_push", { p_endpoint: sub.endpoint });
   await sub.unsubscribe();
 }
+
+/** Admin: quantas pessoas (com avisos ativos) não jogam há N dias. */
+export async function inactiveCount(days: number) { return (await push({ action: "inactive", days })) as { users: number; devices: number }; }
+/** Admin: envia o lembrete a quem não joga há N dias. */
+export async function remindInactive(days: number, title: string, body: string) { return (await push({ action: "remind", days, title, body })) as { sent: number; users: number }; }
