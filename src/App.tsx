@@ -6,6 +6,7 @@ import {
 } from "lucide-react";
 import { newPadCode } from "./pad";
 import { lookupMeta, cleanName } from "./meta";
+import { setPlaying } from "./activity";
 import { filesFromUpload, makePlayableDocument, isRomGame, isRomPath, coreFor, guessPlatform, EMU_CORES } from "./importer";
 import GameSocial from "./Social";
 import RankingPanel from "./Ranking";
@@ -83,6 +84,9 @@ export default function App() {
     setGames(online);
     return online;
   }
+  useEffect(() => {
+    if (view === "player" && selected) { setPlaying({ uid: user?.id ?? null, user: user ? (user.displayName || user.username) : "Visitante", game: selected.id, name: selected.name, since: Date.now() }); return () => setPlaying(null); }
+  }, [view, selected?.id, user?.id]);
   useEffect(() => { refresh().catch(() => setError("Não foi possível carregar os jogos online.")); }, [user?.id]);
   useEffect(() => { if (!isAdmin && view === "settings") setView("home"); }, [isAdmin, view]);
   useEffect(() => {

@@ -365,3 +365,10 @@ input,textarea,select{font-size:16px}
 .tour-next:active{transform:translateY(4px);box-shadow:0 1px 0 color-mix(in srgb,var(--tc) 55%,#000)}
 .tour-skip{height:44px;border:0;background:transparent;color:#8d94b3;font-weight:700;letter-spacing:.5px;text-transform:uppercase}
 @media (prefers-reduced-motion:reduce){.tour-badge,.tour-art i,.tour-body{animation:none}}
+
+/* Atividade (admin) */
+.act-h{display:flex;align-items:center;gap:8px;margin:22px 0 8px;font-size:15px}
+.act-user{display:block!important}
+.act-row{width:100%;display:flex;align-items:center;justify-content:space-between;gap:10px;background:transparent;border:0;color:inherit;text-align:left;padding:0}
+.act-games{list-style:none;margin:8px 0 0;padding:8px 0 0;border-top:1px solid #222942;display:grid;gap:6px}
+.act-games li{display:flex;justify-content:space-between;gap:10px;font-size:13px;color:#b8bdd6}
