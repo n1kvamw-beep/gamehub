@@ -2,7 +2,7 @@ import { useEffect, useMemo, useRef, useState, type FormEvent } from "react";
 import {
   Gamepad2, Search, Plus, Library, Heart, Clock3, Settings, Menu, X, Upload,
   Play, Maximize, Minimize, RotateCcw, ArrowLeft, Trash2, Pencil, Star,
-  FolderOpen, Github, Link as LinkIcon, Gamepad, Sparkles, AlertCircle, CheckCircle2, Download, LogIn, LogOut, UserRound, Smartphone, Users, Globe
+  Github, Link as LinkIcon, Gamepad, Sparkles, AlertCircle, CheckCircle2, Download, LogIn, LogOut, UserRound, Smartphone, Users, Globe
 } from "lucide-react";
 import { newPadCode } from "./pad";
 import { lookupMeta, cleanName } from "./meta";
