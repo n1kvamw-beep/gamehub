@@ -332,3 +332,5 @@ input,textarea,select{font-size:16px}
   .news-head .secondary-btn{font-size:13px;padding:8px 12px}
   .news-panel li b,.news-panel li p{overflow-wrap:anywhere}
 }
+@media (max-width:820px){ .news-panel{top:calc(env(safe-area-inset-top,0px) + 72px);left:max(12px,env(safe-area-inset-left));right:max(12px,env(safe-area-inset-right));max-width:calc(100vw - 24px);box-sizing:border-box} }
+@media (min-width:821px){ .news-panel{position:fixed;top:72px;right:24px;z-index:61} .news-backdrop{z-index:60} }
