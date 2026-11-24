@@ -376,3 +376,17 @@ input,textarea,select{font-size:16px}
 .remind-card label{display:flex;align-items:center;gap:8px;font-size:14px}
 .remind-card input,.remind-card textarea,.remind-card select{background:#0d1020;border:1px solid #2a3150;border-radius:6px;color:inherit;padding:9px 10px}
 .remind-card textarea{resize:vertical}
+
+/* Adicionar jogo: separadores e importação por link */
+.import-tabs{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:4px}
+.import-tabs button{justify-content:center;padding:10px 4px;font-size:12px;white-space:nowrap;min-width:0}
+.remote-import label{font-size:12px}
+.remote-import small{font-size:11px;line-height:1.5}
+.inline-field{align-items:stretch}
+.inline-field input{min-width:0;flex:1;font-size:13px}
+.inline-field .secondary-btn{flex:none;white-space:nowrap}
+@media (max-width:520px){
+  .import-tabs button{flex-direction:column;gap:4px;font-size:11px;padding:8px 2px}
+  .inline-field{flex-direction:column}
+  .inline-field .secondary-btn{width:100%;justify-content:center}
+}
