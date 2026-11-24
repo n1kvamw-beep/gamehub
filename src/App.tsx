@@ -12,6 +12,8 @@ import ProfilePanel from "./Profile";
 import PadHost from "./PadHost";
 import OnlineHost from "./OnlineHost";
 import NewsBell from "./NewsBell";
+import NotifyPrompt from "./NotifyPrompt";
+import { publishNews } from "./news";
 import RoomGuest from "./RoomGuest";
 import Avatar from "./Avatar";
 import PeoplePanel from "./People";
@@ -196,6 +198,8 @@ export default function App() {
       const fresh = await refresh();
       if (editing && selected) setSelected(fresh.find(g => g.id === selected.id) ?? null);
       setModal(false); setNotice(editing ? "Jogo atualizado." : "Jogo publicado.");
+      // Jogo novo e público: avisa automaticamente quem ativou as notificações.
+      if (!editing && form.visibility === "public") publishNews({ kind: "jogo", title: `Novo jogo: ${form.name.trim()}`, body: form.description.trim() || "Já está disponível na biblioteca.", push: true }).catch(() => {});
       setTimeout(() => setNotice(""), 3000);
     } catch (e) { setError(e instanceof Error ? e.message : "Não foi possível guardar o jogo."); }
     finally { setBusy(false); }
@@ -283,6 +287,7 @@ export default function App() {
 
   return <div className="app-shell">
     {padOn && <PadHost code={padCode} frame={frame} show={padShow} onHide={() => setPadShow(false)} inGame={false} onHome={goHome}/>}
+    {!padOn && <NotifyPrompt loggedIn={!!user} onNeedLogin={() => { openAuth(); setAuthError("Entra na tua conta para receber notificações."); }}/>}
     <aside className={`sidebar ${mobileNav ? "open" : ""}`}>
       <div className="brand"><div className="brand-mark"><Gamepad2 size={23}/></div><span>Game<span>Hub</span></span><button className="mobile-close icon-btn" onClick={() => setMobileNav(false)}><X/></button></div>
       <div className="side-label">MENU PRINCIPAL</div>

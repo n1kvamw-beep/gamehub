@@ -298,3 +298,8 @@ input,textarea,select{font-size:16px}
   .pad-over .pad-btn.on{background:rgba(89,70,213,.7);border-color:#a99aff}
   .pad-over .pad-mid{align-self:flex-end;flex-direction:row;gap:12px;padding-bottom:4px}
 }
+
+/* Convite para ativar notificações */
+.notify-prompt{position:fixed;left:50%;transform:translateX(-50%);bottom:16px;z-index:55;width:min(560px,calc(100vw - 24px));display:flex;align-items:center;gap:12px;padding:12px 14px;background:#161b2e;border:1px solid #3a4160;border-radius:14px;box-shadow:0 10px 36px rgba(0,0,0,.5)}
+.notify-prompt>div{flex:1;display:grid;gap:2px;min-width:0}
+.notify-prompt span{font-size:13px;color:#b4b9cc}
