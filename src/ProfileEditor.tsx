@@ -5,7 +5,7 @@ import { updateMyProfile } from "./profile";
 import { r2PutImage, r2DeleteImage, imageUrl } from "./r2";
 import { resizeImage } from "./image";
 
-const COLORS = ["#7865f5", "#5865f2", "#3ba55d", "#faa61a", "#ed4245", "#eb459e", "#00b0f4", "#f47b67", "#43b581", "#99aab5"];
+const COLORS = ["#2fc977", "#5865f2", "#3ba55d", "#faa61a", "#ed4245", "#eb459e", "#00b0f4", "#f47b67", "#43b581", "#99aab5"];
 
 type Props = { profile: PublicProfile; onClose: () => void; onSaved: () => void };
 

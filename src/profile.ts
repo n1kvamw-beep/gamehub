@@ -34,7 +34,7 @@ export async function fetchProfile(username: string): Promise<PublicProfile | nu
   });
   const str = (v: unknown) => (typeof v === "string" ? v : "");
   return { id: p.id as string, username: p.username as string, role: p.role as string,
-    displayName: str(p.display_name), pronouns: str(p.pronouns), status: str(p.status_text), bio: str(p.bio), accent: str(p.accent_color) || "#7865f5",
+    displayName: str(p.display_name), pronouns: str(p.pronouns), status: str(p.status_text), bio: str(p.bio), accent: str(p.accent_color) || "#2fc977",
     avatar: imageUrl(p.avatar_path), banner: imageUrl(p.banner_path), avatarKey: (p.avatar_path as string | null) ?? null, bannerKey: (p.banner_path as string | null) ?? null,
     since: typeof p.created_at === "string" ? p.created_at : null, followers: fo.count ?? 0, following: fi.count ?? 0, iFollow: !!mine.data, games };
 }
@@ -95,6 +95,6 @@ export async function searchPeople(query: string): Promise<PersonHit[]> {
   const str = (v: unknown) => (typeof v === "string" ? v : "");
   return rows.map(r => ({
     id: r.id as string, username: str(r.username), displayName: str(r.display_name), status: str(r.status_text),
-    accent: str(r.accent_color) || "#7865f5", avatar: imageUrl(r.avatar_path as string | null), iFollow: followed.has(r.id as string),
+    accent: str(r.accent_color) || "#2fc977", avatar: imageUrl(r.avatar_path as string | null), iFollow: followed.has(r.id as string),
   }));
 }

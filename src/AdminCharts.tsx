@@ -30,7 +30,7 @@ function StorageCard() {
   </div>;
 }
 
-const COLORS = ["#7865f5", "#ef81c2", "#79b9ff", "#52d69b", "#f2b84b", "#b47dff"];
+const COLORS = ["#2fc977", "#ef81c2", "#79b9ff", "#52d69b", "#f2b84b", "#b47dff"];
 type Row = { label: string; value: number };
 
 function Bars({ title, rows, unit = "" }: { title: string; rows: Row[]; unit?: string }) {
