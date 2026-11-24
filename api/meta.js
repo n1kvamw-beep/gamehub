@@ -10,7 +10,7 @@ const SYSTEMS = {
   "Atari 2600": ["Atari - 2600"], "Atari 7800": ["Atari - 7800"], "Atari Lynx": ["Atari - Lynx"], "Atari Jaguar": ["Atari - Jaguar"],
   "PC Engine": ["NEC - PC Engine - TurboGrafx 16", "NEC - PC Engine CD - TurboGrafx-CD"],
   "Neo Geo Pocket": ["SNK - Neo Geo Pocket Color", "SNK - Neo Geo Pocket"], "WonderSwan": ["Bandai - WonderSwan Color", "Bandai - WonderSwan"],
-  "Virtual Boy": ["Nintendo - Virtual Boy"], "ColecoVision": ["Coleco - ColecoVision"],
+  "Virtual Boy": ["Nintendo - Virtual Boy"], "ColecoVision": ["Coleco - ColecoVision"], "MSX": ["Microsoft - MSX"], "MSX2": ["Microsoft - MSX2"],
   "Arcade (MAME)": ["MAME"], "Arcade (FBNeo)": ["FBNeo - Arcade Games"]
 };
 const REGIONS = ["europe", "world", "usa", "portugal", "spain", "japan"];

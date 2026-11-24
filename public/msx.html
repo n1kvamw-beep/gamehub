@@ -1,0 +1,57 @@
+<!doctype html>
+<html lang="pt-PT">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no" />
+<title>GameHub — MSX</title>
+<style>
+  html,body{margin:0;height:100%;background:#000;color:#cfd2e3;font-family:system-ui,sans-serif;overflow:hidden}
+  #wmsx{position:fixed;left:0;top:0;right:0;bottom:0;display:flex;align-items:center;justify-content:center}
+  #wmsx-screen{width:100%;height:100%}
+  #msg{position:fixed;left:0;top:0;right:0;bottom:0;display:grid;place-items:center;text-align:center;padding:24px;font-size:14px;line-height:1.6;pointer-events:none}
+  #msg.hide{display:none}
+</style>
+</head>
+<body>
+<div id="wmsx"><div id="wmsx-screen"></div></div>
+<div id="msg">A preparar o emulador MSX…</div>
+<script>
+/* Sala online: expõe o ecrã e o som para o anfitrião enviar por WebRTC. */
+(function(){ try {
+  var oc = AudioNode.prototype.connect;
+  AudioNode.prototype.connect = function (d) {
+    var r = oc.apply(this, arguments);
+    try { if (window.AudioDestinationNode && d instanceof AudioDestinationNode) { var ctx = d.context; if (!ctx.__ghTee) { ctx.__ghTee = ctx.createMediaStreamDestination(); window.__ghAudio = ctx.__ghTee; } oc.call(this, ctx.__ghTee); } } catch (x) {}
+    return r;
+  };
+  window.__ghStream = function () { var c = document.querySelector("canvas"); if (!c || !c.captureStream) return null; var s = c.captureStream(60); if (window.__ghAudio) window.__ghAudio.stream.getAudioTracks().forEach(function (t) { s.addTrack(t); }); return s; };
+} catch (e) {} })();
+/* Comando do telemóvel: os botões do GameHub viram teclas do MSX (setas + Espaço). */
+addEventListener("message", function (e) {
+  var d = e.data; if (!d || d.gh !== "key" || e.source !== window.parent) return;
+  var m = { z: [" ", "Space", 32], x: [" ", "Space", 32], a: ["n", "KeyN", 78], s: ["n", "KeyN", 78], Enter: ["Enter", "Enter", 13], v: ["F1", "F1", 112] }[d.key] || [d.key, d.code, d.kc];
+  var ev = new KeyboardEvent(d.type === "u" ? "keyup" : "keydown", { key: m[0], code: m[1], bubbles: true, cancelable: true });
+  try { Object.defineProperty(ev, "keyCode", { get: function () { return m[2]; } }); Object.defineProperty(ev, "which", { get: function () { return m[2]; } }); } catch (x) {}
+  (document.querySelector("canvas") || document.activeElement || document.body).dispatchEvent(ev);
+});
+(function () {
+  var msg = document.getElementById("msg");
+  function fail(t) { msg.className = ""; msg.textContent = t; }
+  var q = new URLSearchParams(location.search);
+  var url = q.get("url"), ext = (q.get("ext") || "rom").toLowerCase(), machine = q.get("machine") === "MSX1" ? "MSX1" : "MSX2";
+  if (!url || !/^https:\/\//i.test(url)) return fail("Ficheiro do jogo em falta.");
+  var cfg = { MACHINE: machine, SCREEN_ELEMENT_ID: "wmsx-screen", SCREEN_FILL_CONTAINER: true, SCREEN_RESPONSIVE_BOUNDING_BOX: true, AUTO_START: true };
+  if (ext === "dsk") cfg.DISKA_URL = url; else if (ext === "cas") cfg.TAPE_URL = url; else cfg.CARTRIDGE1_URL = url;
+  window.WMSX = cfg;
+  var srcs = ["https://webmsx.org/wmsx/wmsx.js", "https://cdn.jsdelivr.net/npm/webmsx@6/wmsx.js", "https://cdn.jsdelivr.net/npm/webmsx@6/wmsx/wmsx.js"], i = 0;
+  function load() {
+    if (i >= srcs.length) return fail("Não foi possível carregar o emulador MSX. Verifica a ligação à Internet.");
+    var s = document.createElement("script"); s.src = srcs[i++]; s.onerror = load; s.onload = function () { setTimeout(function () { msg.className = "hide"; }, 2500); };
+    document.body.appendChild(s);
+  }
+  msg.textContent = "A descarregar o jogo…";
+  load();
+})();
+</script>
+</body>
+</html>
