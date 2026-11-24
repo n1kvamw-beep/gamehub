@@ -281,6 +281,11 @@ export default function App() {
     } catch { setError("O navegador não permitiu o modo de ecrã inteiro."); }
   }
   function goHome() { if (document.fullscreenElement) document.exitFullscreen().catch(() => {}); setSelected(null); setView("home"); }
+  useEffect(() => {
+    const onMsg = (e: MessageEvent) => { if (e.data?.gh === "exit" && e.source === frame.current?.contentWindow) { if (document.fullscreenElement) document.exitFullscreen().catch(() => {}); setView("detail"); } };
+    window.addEventListener("message", onMsg);
+    return () => window.removeEventListener("message", onMsg);
+  }, []);
   function backToLibrary() { if (document.fullscreenElement) document.exitFullscreen().catch(() => {}); setView("detail"); }
   const title = view === "ranking" ? "Ranking" : view === "settings" ? "Administração" : view === "favorites" ? "Os meus favoritos" : view === "recent" ? "Jogados recentemente" : view === "library" ? "A minha biblioteca" : "Descobrir jogos";
   const navItems: { id: View; label: string; icon: typeof Gamepad2 }[] = [

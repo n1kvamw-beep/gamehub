@@ -56,6 +56,18 @@
   window.EJS_pathtodata = "https://cdn.emulatorjs.org/stable/data/";
   window.EJS_startOnLoaded = true;
   window.EJS_threads = !!window.crossOriginIsolated && ["psp", "psx", "n64", "nds", "segaSaturn"].indexOf(core) >= 0;
+  // GBA: saltar o ecrã de arranque da BIOS (Nintendo) — evita que alguns jogos fiquem presos aí.
+  if (core === "gba") window.EJS_defaultOptions = { "mgba_skip_bios": "ON" };
+  // O botão "sair" do emulador volta à página do jogo no GameHub (em vez de ficar dentro do emulador).
+  function leave(e) { if (e) { e.preventDefault(); e.stopImmediatePropagation(); } try { parent.postMessage({ gh: "exit" }, "*"); } catch (x) {} }
+  document.addEventListener("click", function (e) {
+    var t = e.target && e.target.closest ? e.target.closest('[data-btn="exitEmulation"],[data-btn="exit"]') : null;
+    if (t) leave(e);
+  }, true);
+  document.addEventListener("pointerup", function (e) {
+    var t = e.target && e.target.closest ? e.target.closest('[data-btn="exitEmulation"],[data-btn="exit"]') : null;
+    if (t) leave(e);
+  }, true);
   // Jogadores 2 e 3 (telemóveis extra) usam teclas próprias; o jogador 1 mantém as predefinidas.
   var K = {2:{b:["n",78],y:["b",66],select:["y",89],start:["p",80],up:["i",73],down:["k",75],left:["j",74],right:["l",76],a:["m",77],x:["c",67],l:["u",85],r:["o",79]},
            3:{b:["2",50],y:["4",52],select:["8",56],start:["7",55],up:["t",84],down:["g",71],left:["f",70],right:["h",72],a:["1",49],x:["3",51],l:["5",53],r:["6",54]}};
@@ -71,7 +83,7 @@
       }); });
     } catch (x) {}
   }
-  window.EJS_onGameStart = function () { msg.className = "hide"; extraControls(); };
+  window.EJS_onGameStart = function () { msg.className = "hide"; extraControls(); try { if (window.EJS_emulator && window.EJS_emulator.on) window.EJS_emulator.on("exit", function () { leave(); }); } catch (x) {} };
   msg.textContent = "A descarregar o jogo… (pode demorar nos ficheiros grandes)";
 
   var s = document.createElement("script");
