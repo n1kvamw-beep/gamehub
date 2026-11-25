@@ -33,10 +33,57 @@ export function r2PublicUrl(path: string) {
   return base ? `${base}/${r2Key(path).split("/").map(encodeURIComponent).join("/")}` : "";
 }
 
-export async function r2Put(key: string, body: Blob, contentType: string, priv = false) {
+export type Progress = (done: number, total: number) => void;
+const PART = 32 * 1024 * 1024;     // tamanho de cada parte
+const PARALLEL = 4;                // partes enviadas ao mesmo tempo
+const BIG = 48 * 1024 * 1024;      // acima disto usa envio em partes
+
+// Envia uma parte com XHR (dá progresso em tempo real) e repete até 3 vezes se falhar.
+function putPart(url: string, blob: Blob, onBytes: (n: number) => void): Promise<void> {
+  return new Promise((resolve, reject) => {
+    let tries = 0;
+    const go = () => {
+      const x = new XMLHttpRequest();
+      let last = 0;
+      x.open("PUT", url);
+      x.upload.onprogress = e => { onBytes(e.loaded - last); last = e.loaded; };
+      x.onload = () => (x.status >= 200 && x.status < 300 ? resolve() : retry(x.status));
+      x.onerror = () => retry(0);
+      const retry = (code: number) => { onBytes(-last); last = 0; if (++tries < 3) setTimeout(go, 800 * tries); else reject(new Error(`Falha no envio de uma parte (${code}). Verifica a política CORS do bucket.`)); };
+      x.send(blob);
+    };
+    go();
+  });
+}
+
+async function r2PutMultipart(key: string, body: Blob, priv: boolean, onProgress?: Progress) {
+  const { uploadId } = await api({ action: "mp-create", key, private: priv }, true) as { uploadId: string };
+  const count = Math.ceil(body.size / PART);
+  let sent = 0;
+  const bump = (n: number) => { sent += n; onProgress?.(Math.max(0, Math.min(sent, body.size)), body.size); };
+  let next = 1;
+  try {
+    const worker = async () => {
+      while (next <= count) {
+        const n = next++;
+        const { urls } = await api({ action: "mp-sign", key, private: priv, uploadId, parts: [n] }, true) as { urls: string[] };
+        await putPart(urls[0], body.slice((n - 1) * PART, n * PART), bump);
+      }
+    };
+    await Promise.all(Array.from({ length: Math.min(PARALLEL, count) }, worker));
+    await api({ action: "mp-complete", key, private: priv, uploadId, count }, true);
+  } catch (e) {
+    api({ action: "mp-abort", key, private: priv, uploadId }, true).catch(() => {});
+    throw e;
+  }
+}
+
+export async function r2Put(key: string, body: Blob, contentType: string, priv = false, onProgress?: Progress) {
+  if (body.size > BIG) return r2PutMultipart(key, body, priv, onProgress);
   const { url } = await api({ action: "sign", key, private: priv }, true);
   const res = await fetch(url as string, { method: "PUT", body, headers: { "Content-Type": contentType } });
   if (!res.ok) throw new Error(`Falha no envio para o Cloudflare (${res.status}). Verifica a política CORS do bucket.`);
+  onProgress?.(body.size, body.size);
 }
 
 export async function r2Delete(keys: string[], romKeys: string[] = []) {

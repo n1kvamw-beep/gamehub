@@ -120,6 +120,45 @@ export default async function handler(req, res) {
       const [files, roms] = await Promise.all([bucketUsage(BUCKET), bucketUsage(ROMS_BUCKET).catch(e => ({ error: e.message }))]);
       return res.status(200).json({ limitBytes: 10 * 1024 ** 3, files, roms });
     }
+    // Envio em partes (ficheiros grandes): o servidor só cria, assina e conclui; as partes vão direto para o R2.
+    if (String(body.action).startsWith("mp-")) {
+      if (!validKey(body.key)) return res.status(400).json({ error: "Nome de ficheiro inválido." });
+      const bucket = body.private ? ROMS_BUCKET : BUCKET;
+      const tag = (xml, t) => (new RegExp(`<${t}>([^<]*)</${t}>`).exec(xml) || [])[1];
+      if (body.action === "mp-create") {
+        const r = await fetch(presign("POST", body.key, 120, bucket, null, { uploads: "" }), { method: "POST" });
+        const id = tag(await r.text(), "UploadId");
+        return id ? res.status(200).json({ uploadId: id }) : res.status(502).json({ error: "O R2 não iniciou o envio." });
+      }
+      const uploadId = String(body.uploadId || "");
+      if (!/^[\w.~-]{8,300}$/.test(uploadId)) return res.status(400).json({ error: "Envio inválido." });
+      if (body.action === "mp-sign") {
+        const parts = (Array.isArray(body.parts) ? body.parts : []).map(Number).filter(n => n >= 1 && n <= 10000).slice(0, 200);
+        return res.status(200).json({ urls: parts.map(n => presign("PUT", body.key, 3600, bucket, null, { partNumber: String(n), uploadId })) });
+      }
+      if (body.action === "mp-abort") {
+        await fetch(presign("DELETE", body.key, 60, bucket, null, { uploadId }), { method: "DELETE" });
+        return res.status(200).json({ ok: 1 });
+      }
+      if (body.action === "mp-complete") {
+        const parts = []; let marker = "0";
+        for (let guard = 0; guard < 20; guard++) {
+          const x = await (await fetch(presign("GET", body.key, 60, bucket, null, { uploadId, "max-parts": "1000", "part-number-marker": marker }))).text();
+          for (const m of x.matchAll(/<Part>([\s\S]*?)<\/Part>/g)) parts.push({ n: Number(tag(m[1], "PartNumber")), etag: tag(m[1], "ETag") });
+          if (tag(x, "IsTruncated") !== "true") break;
+          marker = tag(x, "NextPartNumberMarker") || String(parts.length);
+        }
+        const want = Number(body.count);
+        if (!parts.length || (want && parts.length !== want)) return res.status(409).json({ error: `Faltam partes (${parts.length}/${want}).` });
+        parts.sort((a, b) => a.n - b.n);
+        const xml = "<CompleteMultipartUpload>" + parts.map(p => `<Part><PartNumber>${p.n}</PartNumber><ETag>${p.etag}</ETag></Part>`).join("") + "</CompleteMultipartUpload>";
+        const r = await fetch(presign("POST", body.key, 120, bucket, null, { uploadId }), { method: "POST", body: xml, headers: { "Content-Type": "application/xml" } });
+        const out = await r.text();
+        if (!r.ok || /<Error>/.test(out)) return res.status(502).json({ error: "O R2 não concluiu o envio." });
+        return res.status(200).json({ ok: 1 });
+      }
+      return res.status(400).json({ error: "Ação desconhecida." });
+    }
     if (body.action === "sign") {
       if (!validKey(body.key)) return res.status(400).json({ error: "Nome de ficheiro inválido." });
       return res.status(200).json({ url: presign("PUT", body.key, 900, body.private ? ROMS_BUCKET : BUCKET) });

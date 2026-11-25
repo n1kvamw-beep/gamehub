@@ -390,3 +390,6 @@ input,textarea,select{font-size:16px}
   .inline-field{flex-direction:column}
   .inline-field .secondary-btn{width:100%;justify-content:center}
 }
+.up-progress{display:grid;gap:5px;min-width:0;flex:1;font-size:12px}
+.up-progress i{display:block;height:6px;border-radius:4px;background:#252a3d;overflow:hidden}
+.up-progress b{display:block;height:100%;background:#2fc977;transition:width .25s}

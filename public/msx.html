@@ -39,7 +39,7 @@ addEventListener("message", function (e) {
   function fail(t) { msg.className = ""; msg.textContent = t; }
   var q = new URLSearchParams(location.search);
   var url = q.get("url"), ext = (q.get("ext") || "rom").toLowerCase(), machine = q.get("machine") === "MSX1" ? "MSX1" : "MSX2";
-  if (!url || !/^https:\/\//i.test(url)) return fail("Ficheiro do jogo em falta.");
+  if (!url || !/^(https:|blob:)/i.test(url)) return fail("Ficheiro do jogo em falta.");
   var cfg = { MACHINE: machine, SCREEN_ELEMENT_ID: "wmsx-screen", SCREEN_FILL_CONTAINER: true, SCREEN_RESPONSIVE_BOUNDING_BOX: true, AUTO_START: true };
   if (ext === "dsk") cfg.DISKA_URL = url; else if (ext === "cas") cfg.TAPE_URL = url; else cfg.CARTRIDGE1_URL = url;
   window.WMSX = cfg;

@@ -21,7 +21,9 @@ function need() {
 async function zipFiles(files: GameFile[]): Promise<Blob> {
   const data: Record<string, Uint8Array> = {};
   for (const file of files) data[file.path] = new Uint8Array(await file.blob.arrayBuffer());
-  return new Blob([zipSync(data)], { type: "application/zip" });
+  // Imagens de jogo (ROMs, discos) quase não comprimem: guardar sem compressão é muito mais rápido.
+  const store = files.some(f => /\.(bin|cue|iso|img|chd|cso|pbp|gba|nds|gb|gbc|nes|sfc|smc|n64|z64|v64|md|gen|smd|gg|sms|pce|a26|a78|lnk|jag|ngp|ws|wsc|vb|col|rom|dsk|cas|mx1|mx2)$/i.test(f.path));
+  return new Blob([zipSync(data, { level: store ? 0 : 6 })], { type: "application/zip" });
 }
 
 async function upload(path: string, body: Blob, contentType: string, bucket = BUCKET) {
@@ -41,7 +43,7 @@ async function removeFiles(items: Stored[]) {
 }
 
 // Cria ou atualiza um jogo: envia ZIP/capa para o Storage e grava a linha na tabela games.
-export async function saveRemoteGame(input: { existing: Game | null; form: GameForm; files: GameFile[]; cover: string }) {
+export async function saveRemoteGame(input: { existing: Game | null; form: GameForm; files: GameFile[]; cover: string; onProgress?: (text: string, pct: number) => void }) {
   const sb = need();
   const old = input.existing;
   const id = old?.id ?? uuid();
@@ -55,6 +57,7 @@ export async function saveRemoteGame(input: { existing: Game | null; form: GameF
     if (input.files.length) {
       // Uma única imagem de disco (.iso, etc.) vai tal como está; o resto vai num ZIP.
       const single = input.files.length === 1 && isRomGame(input.files);
+      if (!single) input.onProgress?.("A preparar os ficheiros…", 0);
       const body = single ? input.files[0].blob : await zipFiles(input.files);
       const ext = single ? (input.files[0].path.split(".").pop() || "iso").toLowerCase() : "zip";
       // Conjuntos de arcade guardam o nome original (o MAME precisa do nome do jogo, ex.: pacman.zip).
@@ -67,7 +70,8 @@ export async function saveRemoteGame(input: { existing: Game | null; form: GameF
         // Vai para o Cloudflare R2 (sem o limite de 50 MB do Supabase). ROMs ficam no bucket privado.
         const key = restricted ? `roms/${path}` : `games/${path}`;
         const stored = (restricted ? "r2rom:" : "r2:") + key;
-        await r2Put(key, body, type, restricted);
+        input.onProgress?.("A enviar o jogo…", 0);
+        await r2Put(key, body, type, restricted, (d, t) => input.onProgress?.(`A enviar o jogo… ${Math.round(d / 1048576)} / ${Math.round(t / 1048576)} MB`, Math.round((d / t) * 100)));
         uploaded.push({ bucket: "r2", path: stored });
         filePath = stored;
       } else {

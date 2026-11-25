@@ -6,6 +6,7 @@ import {
 } from "lucide-react";
 import { newPadCode } from "./pad";
 import { lookupMeta, cleanName } from "./meta";
+import { fastBlob } from "./fastfetch";
 import { setPlaying } from "./activity";
 import { filesFromUpload, makePlayableDocument, isRomGame, isRomPath, coreFor, guessPlatform, EMU_CORES } from "./importer";
 import GameSocial from "./Social";
@@ -54,6 +55,7 @@ export default function App() {
   const [metaMsg, setMetaMsg] = useState("");
   const [editing, setEditing] = useState(false);
   const [busy, setBusy] = useState(false);
+  const [progress, setProgress] = useState<{ text: string; pct: number } | null>(null);
   const [error, setError] = useState("");
   const [notice, setNotice] = useState("");
   const [mobileNav, setMobileNav] = useState(false);
@@ -224,7 +226,7 @@ export default function App() {
     if (!pendingFiles.length && !(editing && selected)) return setError("Adiciona os ficheiros do jogo.");
     setBusy(true);
     try {
-      await saveRemoteGame({ existing: editing ? selected : null, form: { ...form, name: form.name.trim() }, files: pendingFiles, cover });
+      await saveRemoteGame({ existing: editing ? selected : null, form: { ...form, name: form.name.trim() }, files: pendingFiles, cover, onProgress: (text, pct) => setProgress({ text, pct }) });
       const fresh = await refresh();
       if (editing && selected) setSelected(fresh.find(g => g.id === selected.id) ?? null);
       setModal(false); setNotice(editing ? "Jogo atualizado." : "Jogo publicado.");
@@ -264,8 +266,18 @@ export default function App() {
       if (playUrl) URL.revokeObjectURL(playUrl);
       blobUrls.forEach(URL.revokeObjectURL);
       const core = coreFor(game.platform);
+      // Ficheiros grandes: descarrega em partes paralelas e guarda no aparelho (2.ª vez abre logo).
+      let src = "";
+      if (core && game.remote) {
+        src = await remoteFileUrl(game);
+        if (game.remote.filePath.startsWith("r2")) {
+          let last = 0;
+          const b = await fastBlob(src, game.id, game.remote.filePath, (d, t) => { const pct = Math.floor((d / t) * 100); if (pct >= last + 5) { last = pct; setNotice(`A descarregar o jogo… ${pct}%`); } });
+          if (b) src = URL.createObjectURL(b);
+        }
+      }
       const result = core && game.remote
-        ? { url: core.startsWith("msx") ? `/msx.html?machine=${core === "msx" ? "MSX1" : "MSX2"}&ext=${encodeURIComponent((game.remote.filePath || "").split(".").pop() || "rom")}&name=${encodeURIComponent(game.name)}&url=${encodeURIComponent(await remoteFileUrl(game))}` : `/emulator.html?core=${core}&name=${encodeURIComponent(game.name)}&url=${encodeURIComponent(await remoteFileUrl(game))}`, urls: [] as string[] }
+        ? { url: core.startsWith("msx") ? `/msx.html?machine=${core === "msx" ? "MSX1" : "MSX2"}&ext=${encodeURIComponent((game.remote.filePath || "").split(".").pop() || "rom")}&name=${encodeURIComponent(game.name)}&url=${encodeURIComponent(src)}` : `/emulator.html?core=${core}&name=${encodeURIComponent(game.name)}&url=${encodeURIComponent(src)}`, urls: src.startsWith("blob:") ? [src] : [] as string[] }
         : await makePlayableDocument(await loadRemoteGameFiles(game));
       setPlayUrl(result.url); setBlobUrls(result.urls); setSelected(game); setView("player");
       setRemoteMeta(game.id, { lastPlayed: Date.now(), playCount: game.playCount + 1 });
@@ -370,7 +382,7 @@ export default function App() {
       {!editing && importMode==="github" && <div className="remote-import"><label>Repositório público do GitHub</label><div className="inline-field"><input value={githubUrl} onChange={e=>setGithubUrl(e.target.value)} placeholder="https://github.com/utilizador/jogo"/><button className="secondary-btn" disabled={busy || !githubUrl.trim()} onClick={()=>importRemote(githubUrl,true)}>Importar</button></div><small>Importa a branch principal e procura um ficheiro HTML.</small></div>}
       <div className="form-grid"><label className="full">Nome do jogo<input value={form.name} onChange={e=>setForm({...form,name:e.target.value})} placeholder="Ex.: O meu jogo"/>{coreFor(form.platform) && pendingFiles.length>0 && <span style={{display:"flex",gap:8,alignItems:"center",marginTop:6}}><button type="button" className="secondary-btn" onClick={()=>autoMeta(pendingFiles, form.platform, false)}><Search size={14}/>Procurar nome e capa</button><small>{metaMsg}</small></span>}</label><label className="full">Descrição<textarea rows={2} value={form.description} onChange={e=>setForm({...form,description:e.target.value})} placeholder="Descreve brevemente o teu jogo..."/></label><label>Categoria<select value={form.category} onChange={e=>setForm({...form,category:e.target.value})}>{["Indie","Aventura","Arcade","Projeto pessoal","Outro"].map(v=><option>{v}</option>)}</select></label><label>Género<select value={form.genre} onChange={e=>setForm({...form,genre:e.target.value})}>{["Ação","Aventura","Corrida","Puzzle","Estratégia","RPG","Simulação","Indie","Outro"].map(v=><option>{v}</option>)}</select></label><label>Plataforma<select value={form.platform} onChange={e=>setForm({...form,platform:e.target.value})}>{["HTML5","WebGL","Three.js","Phaser","Outro",...Object.keys(EMU_CORES)].map(v=><option>{v}</option>)}</select></label><label>Quem pode ver<select value={form.visibility} onChange={e=>setForm({...form,visibility:e.target.value as Visibility})}><option value="public">Público (todos)</option><option value="family">Família (aprovados)</option><option value="private">Privado (só admin)</option></select></label><label>Capa do jogo<div className="cover-picker"><button type="button" className="secondary-btn" onClick={()=>coverInput.current?.click()}><Upload size={15}/>Escolher imagem</button><input ref={coverInput} type="file" accept="image/*" hidden onChange={e=>{const f=e.target.files?.[0];if(f){const reader=new FileReader();reader.onload=()=>setCover(String(reader.result));reader.readAsDataURL(f)}}}/>{cover && <img src={cover}/>}</div></label></div>
       {error && <div className="form-error"><AlertCircle size={15}/>{error}</div>}
-      <div className="modal-footer"><span>{editing && !pendingFiles.length ? "Ficheiros atuais mantidos" : `${pendingFiles.length} ficheiros`} · Guardado no Supabase</span><button className="primary-btn" disabled={busy} onClick={saveGame}>{busy ? "A guardar..." : editing ? "Guardar alterações" : "Adicionar à biblioteca"}</button></div>
+      <div className="modal-footer">{busy && progress ? <span className="up-progress"><span>{progress.text}</span><i><b style={{width:`${progress.pct}%`}}/></i></span> : <span>{editing && !pendingFiles.length ? "Ficheiros atuais mantidos" : `${pendingFiles.length} ficheiros`} · Guardado no Supabase</span>}<button className="primary-btn" disabled={busy} onClick={saveGame}>{busy ? "A guardar..." : editing ? "Guardar alterações" : "Adicionar à biblioteca"}</button></div>
     </div></div>}
   </div>;
 }
