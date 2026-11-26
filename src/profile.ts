@@ -123,3 +123,27 @@ export async function listFollow(profileId: string, kind: "followers" | "followi
     accent: str(r.accent_color) || "#2fc977", avatar: imageUrl(r.avatar_path as string | null), iFollow: followed.has(r.id as string),
   })).sort((a, b) => a.username.localeCompare(b.username));
 }
+
+export type LeaderRow = PersonHit & { plays: number; games: number; followers: number; comments: number; ratings: number; points: number };
+// Pontos = partidas + 3×avaliações + 5×comentários + 10×seguidores.
+export const pointsOf = (r: { plays: number; ratings: number; comments: number; followers: number }) => r.plays + 3 * r.ratings + 5 * r.comments + 10 * r.followers;
+
+export async function fetchLeaderboard(): Promise<LeaderRow[]> {
+  const sb = need();
+  await r2Base();
+  const { data, error } = await sb.rpc("gh_leaderboard");
+  if (error) throw new Error(/gh_leaderboard|function/i.test(error.message) ? "MISSING_SQL" : error.message);
+  const rows = ((data ?? []) as Record<string, unknown>[]).map(r => ({
+    id: String(r.user_id), plays: Number(r.plays), games: Number(r.games), followers: Number(r.followers), comments: Number(r.comments), ratings: Number(r.ratings),
+  })).filter(r => r.plays + r.followers + r.comments + r.ratings > 0);
+  if (!rows.length) return [];
+  rows.sort((a, b) => pointsOf(b) - pointsOf(a));
+  const top = rows.slice(0, 100);
+  const { data: profs } = await sb.from("profiles").select("*").in("id", top.map(r => r.id));
+  const by = new Map(((profs ?? []) as Record<string, unknown>[]).map(p => [p.id as string, p]));
+  const str = (v: unknown) => (typeof v === "string" ? v : "");
+  return top.flatMap(r => {
+    const p = by.get(r.id); if (!p) return [];
+    return [{ ...r, points: pointsOf(r), username: str(p.username), displayName: str(p.display_name), status: str(p.status_text), accent: str(p.accent_color) || "#2fc977", avatar: imageUrl(p.avatar_path as string | null), iFollow: false }];
+  });
+}

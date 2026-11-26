@@ -400,3 +400,13 @@ input,textarea,select{font-size:16px}
 .follow-modal{background:#111627;border:1px solid #2a3150;border-radius:10px;width:min(480px,calc(100vw - 24px));max-height:min(78vh,640px);overflow:auto;padding:16px;margin:auto}
 .follow-head{display:flex;align-items:center;justify-content:space-between;margin-bottom:10px}
 .follow-head h3{margin:0;font-size:18px}
+
+/* Classificação de jogadores */
+.lb-main,.lb-tabs{margin-bottom:12px}
+.lb-tabs{grid-template-columns:repeat(4,minmax(0,1fr))}
+.lb-main{grid-template-columns:repeat(2,minmax(0,1fr))}
+.lb-note{font-size:12px;margin:0 0 12px}
+.lb-row{gap:12px}
+.lb-row.me{border-color:#2fc977;background:rgba(47,201,119,.08)}
+.medal.m1{color:#f5c542}.medal.m2{color:#c4cbd6}.medal.m3{color:#cd7f32}
+.lb-row .rank-stats{flex-wrap:wrap;justify-content:flex-end;gap:8px 12px}
