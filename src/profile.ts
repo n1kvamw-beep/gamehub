@@ -45,7 +45,7 @@ export async function setFollow(targetId: string, on: boolean) {
   const me = data.session?.user.id;
   if (!me) throw new Error("Entra na tua conta para seguir.");
   const { error } = on
-    ? await sb.from("follows").insert({ follower_id: me, followee_id: targetId })
+    ? await sb.from("follows").upsert({ follower_id: me, followee_id: targetId }, { onConflict: "follower_id,followee_id", ignoreDuplicates: true })
     : await sb.from("follows").delete().eq("follower_id", me).eq("followee_id", targetId);
   if (error) throw new Error(error.message);
 }
@@ -97,4 +97,29 @@ export async function searchPeople(query: string): Promise<PersonHit[]> {
     id: r.id as string, username: str(r.username), displayName: str(r.display_name), status: str(r.status_text),
     accent: str(r.accent_color) || "#2fc977", avatar: imageUrl(r.avatar_path as string | null), iFollow: followed.has(r.id as string),
   }));
+}
+
+// Quem segue esta pessoa ("followers") ou quem ela segue ("following").
+export async function listFollow(profileId: string, kind: "followers" | "following"): Promise<PersonHit[]> {
+  const sb = need();
+  await r2Base();
+  const [mine, other] = kind === "followers" ? ["followee_id", "follower_id"] : ["follower_id", "followee_id"];
+  const { data: rel, error } = await sb.from("follows").select(other).eq(mine, profileId).limit(300);
+  if (error) throw new Error(error.message);
+  const ids = ((rel ?? []) as unknown as Record<string, string>[]).map(r => r[other]);
+  if (!ids.length) return [];
+  const { data: rows, error: e2 } = await sb.from("profiles").select("*").in("id", ids);
+  if (e2) throw new Error(e2.message);
+  const { data: s } = await sb.auth.getSession();
+  const me = s.session?.user.id;
+  let followed = new Set<string>();
+  if (me) {
+    const { data: f } = await sb.from("follows").select("followee_id").eq("follower_id", me).in("followee_id", ids);
+    followed = new Set(((f ?? []) as { followee_id: string }[]).map(x => x.followee_id));
+  }
+  const str = (v: unknown) => (typeof v === "string" ? v : "");
+  return ((rows ?? []) as Record<string, unknown>[]).map(r => ({
+    id: r.id as string, username: str(r.username), displayName: str(r.display_name), status: str(r.status_text),
+    accent: str(r.accent_color) || "#2fc977", avatar: imageUrl(r.avatar_path as string | null), iFollow: followed.has(r.id as string),
+  })).sort((a, b) => a.username.localeCompare(b.username));
 }

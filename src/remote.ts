@@ -48,7 +48,7 @@ export async function setFavorite(gameId: string, on: boolean) {
   const userId = await currentUserId();
   if (!userId) throw new Error("Entra na tua conta para guardar favoritos.");
   const { error } = on
-    ? await supabase.from("favorites").insert({ user_id: userId, game_id: gameId })
+    ? await supabase.from("favorites").upsert({ user_id: userId, game_id: gameId }, { onConflict: "user_id,game_id", ignoreDuplicates: true })
     : await supabase.from("favorites").delete().eq("user_id", userId).eq("game_id", gameId);
   if (error) throw new Error(error.message);
 }

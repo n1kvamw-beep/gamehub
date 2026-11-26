@@ -236,10 +236,18 @@ export default function App() {
     } catch (e) { setError(e instanceof Error ? e.message : "Não foi possível guardar o jogo."); }
     finally { setBusy(false); }
   }
+  const favBusy = useRef(new Set<string>());
   async function toggleFavorite(game: Game) {
     if (!user) { openAuth(); setAuthError("Entra na tua conta para guardar favoritos."); return; }
-    try { await setFavorite(game.id, !game.favorite); }
-    catch (e) { setError(e instanceof Error ? e.message : "Não foi possível guardar o favorito."); return; }
+    if (favBusy.current.has(game.id)) return; // cliques rápidos: espera o anterior acabar
+    favBusy.current.add(game.id);
+    const want = !game.favorite;
+    // Resposta imediata no ecrã; o servidor confirma a seguir.
+    setGames(gs => gs.map(g => g.id === game.id ? { ...g, favorite: want } : g));
+    if (selected?.id === game.id) setSelected(sel => sel ? { ...sel, favorite: want } : sel);
+    try { await setFavorite(game.id, want); }
+    catch (e) { setError(e instanceof Error ? e.message : "Não foi possível guardar o favorito."); }
+    finally { favBusy.current.delete(game.id); }
     const fresh = await refresh();
     if (selected?.id === game.id) setSelected(fresh.find(g => g.id === game.id) ?? selected);
   }
@@ -356,7 +364,7 @@ export default function App() {
           <div className="stats-row"><div className="stat-card"><div className="stat-icon purple"><Library/></div><div><strong>{games.length}</strong><small>Jogos na biblioteca</small></div></div><div className="stat-card"><div className="stat-icon pink"><Heart/></div><div><strong>{games.filter(g=>g.favorite).length}</strong><small>Favoritos</small></div></div><div className="stat-card"><div className="stat-icon blue"><Play/></div><div><strong>{games.reduce((n,g)=>n+g.playCount,0)}</strong><small>Partidas iniciadas</small></div></div></div>
           {games.length === 0 ? <div className="empty-state"><div className="empty-icon"><Gamepad2 size={35}/></div><h2>{isAdmin ? "A biblioteca começa aqui" : "Ainda não há jogos"}</h2><p>{isAdmin ? "Adiciona um jogo HTML ou um ZIP. Fica guardado no Supabase e aparece para toda a gente." : "Volta mais tarde: ainda não foram publicados jogos."}</p>{isAdmin && <button className="primary-btn" onClick={openAdd}><Upload size={17}/>Importar um jogo</button>}</div> : <><GameSection title="Adicionados recentemente" subtitle="Os últimos jogos que chegaram à tua coleção." games={recent} onOpen={g=>{setSelected(g);setView("detail")}} onFavorite={toggleFavorite}/>{favorites.length>0 && <GameSection title="Os teus favoritos" subtitle="Os jogos que marcaste como especiais." games={favorites} onOpen={g=>{setSelected(g);setView("detail")}} onFavorite={toggleFavorite}/>}<GameSection title="Toda a biblioteca" subtitle="Continua a tua aventura." games={filtered.slice(0,8)} onOpen={g=>{setSelected(g);setView("detail")}} onFavorite={toggleFavorite}/></>}
         </>}
-        {view === "profile" && profileName && <ProfilePanel username={profileName} user={user} onNeedLogin={() => { openAuth(); setAuthError("Entra na tua conta para participar."); }} onOpenGame={id => { const g = games.find(x => x.id === id); if (g) { setSelected(g); setView("detail"); } }} onProfileChanged={() => { loadUser().then(setUser); }}/>}
+        {view === "profile" && profileName && <ProfilePanel username={profileName} user={user} onNeedLogin={() => { openAuth(); setAuthError("Entra na tua conta para participar."); }} onOpenProfile={n => { setProfileName(n); setView("profile"); }} onOpenGame={id => { const g = games.find(x => x.id === id); if (g) { setSelected(g); setView("detail"); } }} onProfileChanged={() => { loadUser().then(setUser); }}/>}
         {view === "people" && <PeoplePanel user={user} onNeedLogin={() => { openAuth(); setAuthError("Entra na tua conta para seguir."); }} onOpenProfile={n => { setProfileName(n); setView("profile"); }}/>}
         {view === "ranking" && <RankingPanel games={games} onOpen={g => { setSelected(g); setView("detail"); }}/>}
         {view === "settings" && <AdminPanel games={games} user={user} onSignOut={() => { signOut(); }} onEdit={g => openEdit(g)} onChanged={async () => { await refresh(); }}/>}

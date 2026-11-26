@@ -393,3 +393,10 @@ input,textarea,select{font-size:16px}
 .up-progress{display:grid;gap:5px;min-width:0;flex:1;font-size:12px}
 .up-progress i{display:block;height:6px;border-radius:4px;background:#252a3d;overflow:hidden}
 .up-progress b{display:block;height:100%;background:#2fc977;transition:width .25s}
+
+/* Lista de seguidores */
+.count-btn{background:transparent;border:0;padding:0;color:inherit;font:inherit;cursor:pointer;text-align:left}
+.count-btn:hover{text-decoration:underline}
+.follow-modal{background:#111627;border:1px solid #2a3150;border-radius:10px;width:min(480px,calc(100vw - 24px));max-height:min(78vh,640px);overflow:auto;padding:16px;margin:auto}
+.follow-head{display:flex;align-items:center;justify-content:space-between;margin-bottom:10px}
+.follow-head h3{margin:0;font-size:18px}
