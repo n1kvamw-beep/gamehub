@@ -17,6 +17,14 @@
 <script>
 /* Sala online: expõe o ecrã e o som do emulador para o anfitrião os enviar por WebRTC. */
 (function(){ try {
+  // Mantém a imagem WebGL legível para a captação (sem isto o vídeo da sala pode chegar sem imagens).
+  var gc = HTMLCanvasElement.prototype.getContext;
+  HTMLCanvasElement.prototype.getContext = function (t, a) {
+    if (typeof t === "string" && /webgl/i.test(t)) { a = Object.assign({}, a || {}, { preserveDrawingBuffer: true }); }
+    return gc.call(this, t, a);
+  };
+} catch (e) {} })();
+(function(){ try {
   var oc = AudioNode.prototype.connect;
   AudioNode.prototype.connect = function (d) {
     var r = oc.apply(this, arguments);
