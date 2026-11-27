@@ -36,8 +36,8 @@ async function remind(res, headers, body) {
   const targets = subs.filter(s => !admins.has(s.user_id) && Math.max(last[s.user_id] || 0, new Date(s.created_at).getTime() || 0) < cutoff);
   const users = new Set(targets.map(s => s.user_id)).size;
   if (body.action === "inactive") return res.status(200).json({ users, devices: targets.length, days });
-  const title = String(body.title || "Sentimos a tua falta! 🎮").slice(0, 80);
-  const text = String(body.body || "Há jogos e novidades à tua espera no GameHub. Volta e joga uma partida!").slice(0, 160);
+  const title = String(body.title || "Sentimos a tua falta").slice(0, 80);
+  const text = String(body.body || "Há jogos e novidades à tua espera no GameHub. Volta e joga uma partida.").slice(0, 160);
   webpush.setVapidDetails("mailto:n1kvamw@gmail.com", PUB, PRIV);
   const payload = JSON.stringify({ title, body: text, url: "/" });
   let sent = 0; const dead = [];
@@ -62,7 +62,7 @@ export default async function handler(req, res) {
     if (body.action !== "send" || !/^[0-9a-f-]{36}$/i.test(body.newsId || "")) return res.status(400).json({ error: "Pedido inválido." });
     const n = await (await fetch(`${SB_URL}/rest/v1/news?id=eq.${body.newsId}&select=kind,title,body`, { headers })).json();
     if (!n[0]) return res.status(404).json({ error: "Novidade não encontrada." });
-    const prefix = { jogo: "🎮 Jogo novo", mecanica: "⚙️ Mecânicas", bug: "🛠️ Bug corrigido", outro: "📣 Novidade" }[n[0].kind] || "GameHub";
+    const prefix = { jogo: "Jogo novo", mecanica: "Mecânicas", bug: "Bug corrigido", outro: "Novidade" }[n[0].kind] || "GameHub";
     const payload = JSON.stringify({ title: `${prefix}: ${n[0].title}`, body: n[0].body.slice(0, 160), url: "/" });
     const subsRes = await fetch(`${SB_URL}/rest/v1/push_subs?select=endpoint,p256dh,auth`, { headers });
     const subs = subsRes.ok ? await subsRes.json() : [];

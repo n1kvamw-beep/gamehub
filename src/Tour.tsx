@@ -3,12 +3,12 @@ import { Gamepad2, Joystick, Smartphone, Users, BellRing, Download, X, ArrowRigh
 
 const KEY = "gh-tour-seen";
 const slides = [
-  { Icon: Gamepad2, color: "#2fc977", title: "Bem-vindo ao GameHub!", text: "A tua biblioteca de jogos, sempre à mão — diretamente no navegador, sem instalar nada." },
-  { Icon: Joystick, color: "#f5b942", title: "Joga de tudo", text: "Jogos HTML5, clássicos de consola e arcade: NES, Mega Drive, PlayStation, PSP e muito mais." },
-  { Icon: Smartphone, color: "#4aa8ff", title: "O telemóvel é o teu comando", text: "Liga o telemóvel ao jogo com um código e usa-o como comando, com botões no ecrã." },
-  { Icon: Users, color: "#ff6b9d", title: "Joga com amigos", text: "Multiplayer local para até 3 jogadores ou online, numa sala com código que partilhas." },
-  { Icon: BellRing, color: "#b78cff", title: "Fica a par das novidades", text: "Ativa os avisos e recebe uma notificação quando houver jogos novos, melhorias ou correções." },
-  { Icon: Download, color: "#2fc977", title: "Instala o app", text: "Adiciona o GameHub ao ecrã inicial e abre-o como uma app a sério. Boa diversão!" },
+  { Icon: Gamepad2, color: "#2fc977", title: "Bem-vindo ao GameHub", text: "A tua biblioteca de jogos, sempre à mão — diretamente no navegador, sem instalar nada." },
+  { Icon: Joystick, color: "#2fc977", title: "Joga de tudo", text: "Jogos HTML5, clássicos de consola e arcade: NES, Mega Drive, PlayStation, PSP e muito mais." },
+  { Icon: Smartphone, color: "#2fc977", title: "O telemóvel é o teu comando", text: "Liga o telemóvel ao jogo com um código e usa-o como comando, com botões no ecrã." },
+  { Icon: Users, color: "#2fc977", title: "Joga com amigos", text: "Multiplayer local para até 3 jogadores ou online, numa sala com código que partilhas." },
+  { Icon: BellRing, color: "#2fc977", title: "Fica a par das novidades", text: "Ativa os avisos e recebe uma notificação quando houver jogos novos, melhorias ou correções." },
+  { Icon: Download, color: "#2fc977", title: "Instala o app", text: "Adiciona o GameHub ao ecrã inicial e abre-o como uma app a sério." },
 ];
 
 function shouldAutoShow() {

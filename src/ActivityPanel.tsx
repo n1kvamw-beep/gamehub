@@ -27,8 +27,8 @@ export default function ActivityPanel() {
   const [, tick] = useState(0);
   const [days, setDays] = useState(7);
   const [count, setCount] = useState<number | null>(null);
-  const [rTitle, setRTitle] = useState("Sentimos a tua falta! 🎮");
-  const [rBody, setRBody] = useState("Há jogos e novidades à tua espera no GameHub. Volta e joga uma partida!");
+  const [rTitle, setRTitle] = useState("Sentimos a tua falta");
+  const [rBody, setRBody] = useState("Há jogos e novidades à tua espera no GameHub. Volta e joga uma partida.");
   const [rMsg, setRMsg] = useState("");
   const [rBusy, setRBusy] = useState(false);
   useEffect(() => { setCount(null); inactiveCount(days).then(r => setCount(r.users)).catch(() => setCount(null)); }, [days]);
