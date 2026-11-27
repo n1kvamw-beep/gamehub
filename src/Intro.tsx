@@ -1,5 +1,4 @@
 import { useEffect, useState } from "react";
-import { Gamepad2 } from "lucide-react";
 
 const SEEN = "gh-intro-seen";
 const skip = () => {
@@ -73,7 +72,7 @@ export default function Intro() {
   return <div className={`intro${leaving ? " leave" : ""}`} onClick={end} role="presentation" aria-hidden="true">
     <div className="intro-glow"/>
     <div className="intro-stage">
-      <div className="intro-mark"><Gamepad2 size={64} strokeWidth={2.2}/></div>
+      <div className="intro-mark"><img src="/icons/logo.svg" alt="" width={96} height={96}/></div>
       <div className="intro-word">{"GameHub".split("").map((c, i) => <span key={i} style={{ animationDelay: `${0.75 + i * 0.07}s` }} className={i >= 4 ? "hub" : ""}>{c}</span>)}</div>
       <div className="intro-sweep"/>
     </div>

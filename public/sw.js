@@ -1,5 +1,5 @@
-const CACHE = "gamehub-shell-v1";
-const SHELL = ["/", "/index.html", "/manifest.webmanifest", "/icons/gamehub-192.svg", "/icons/gamehub-512.svg"];
+const CACHE = "gamehub-shell-v2";
+const SHELL = ["/", "/index.html", "/manifest.webmanifest", "/icons/icon-192.png", "/icons/icon-512.png", "/icons/logo.svg"];
 self.addEventListener("install", event => {
   event.waitUntil(caches.open(CACHE).then(cache => cache.addAll(SHELL)).then(() => self.skipWaiting()));
 });
@@ -21,7 +21,7 @@ self.addEventListener("fetch", event => {
 self.addEventListener("push", event => {
   let d = {};
   try { d = event.data ? event.data.json() : {}; } catch (e) {}
-  event.waitUntil(self.registration.showNotification(d.title || "GameHub", { body: d.body || "", icon: "/icons/gamehub-192.svg", badge: "/icons/gamehub-192.svg", data: { url: d.url || "/" } }));
+  event.waitUntil(self.registration.showNotification(d.title || "GameHub", { body: d.body || "", icon: "/icons/icon-192.png", badge: "/icons/icon-192.png", data: { url: d.url || "/" } }));
 });
 self.addEventListener("notificationclick", event => {
   event.notification.close();
