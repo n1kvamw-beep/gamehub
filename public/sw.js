@@ -1,4 +1,4 @@
-const CACHE = "gamehub-shell-v1";
+const CACHE = "gamehub-shell-v2";
 const SHELL = ["/", "/index.html", "/manifest.webmanifest", "/icons/gamehub-192.svg", "/icons/gamehub-512.svg"];
 self.addEventListener("install", event => {
   event.waitUntil(caches.open(CACHE).then(cache => cache.addAll(SHELL)).then(() => self.skipWaiting()));
@@ -9,7 +9,7 @@ self.addEventListener("activate", event => {
 self.addEventListener("fetch", event => {
   const request = event.request;
   if (request.method !== "GET" || new URL(request.url).origin !== self.location.origin) return;
-  event.respondWith(fetch(request).then(response => {
+  event.respondWith(fetch(request, request.destination === "document" ? { cache: "no-store" } : undefined).then(response => {
     if (response.ok && request.destination !== "document" && !request.url.includes("/@vite/")) {
       const copy = response.clone();
       caches.open(CACHE).then(cache => cache.put(request, copy));

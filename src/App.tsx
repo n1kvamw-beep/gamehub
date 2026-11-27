@@ -115,7 +115,7 @@ export default function App() {
     window.addEventListener("beforeinstallprompt", onInstall);
     window.addEventListener("appinstalled", onInstalled);
     if ("serviceWorker" in navigator && import.meta.env.PROD) {
-      navigator.serviceWorker.register("/sw.js").catch(() => setError("Não foi possível ativar o modo de aplicação instalável."));
+      (() => { const had = !!navigator.serviceWorker.controller; navigator.serviceWorker.addEventListener("controllerchange", () => { if (had) location.reload(); }); return navigator.serviceWorker.register("/sw.js"); })().catch(() => setError("Não foi possível ativar o modo de aplicação instalável."));
     }
     return () => {
       window.removeEventListener("beforeinstallprompt", onInstall);
