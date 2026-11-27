@@ -9,6 +9,9 @@ export default function RoomGuest({ initialCode, onExit }: { initialCode: string
   const [input, setInput] = useState(initialCode);
   const [code, setCode] = useState("");
   const [live, setLive] = useState(false);
+  const [framed, setFramed] = useState(false);
+  const [stale, setStale] = useState(false);
+  const [retry, setRetry] = useState(0);
   const video = useRef<HTMLVideoElement>(null);
   const liveRef = useRef(false);
   liveRef.current = live;
@@ -28,7 +31,7 @@ export default function RoomGuest({ initialCode, onExit }: { initialCode: string
         if (p.t === "offer") {
           pc?.close(); pending = [];
           const conn = pc = new RTCPeerConnection({ iceServers: ICE });
-          conn.ontrack = e => { const v = video.current; if (v && e.streams[0]) { v.srcObject = e.streams[0]; v.play().catch(() => {}); } setLive(true); };
+          conn.ontrack = e => { const v = video.current; if (v && e.streams[0]) { v.muted = true; v.srcObject = e.streams[0]; v.play().catch(() => {}); } setLive(true); };
           conn.onicecandidate = e => { if (e.candidate) send({ t: "ice", id, to: "host", c: e.candidate.toJSON() }); };
           conn.onconnectionstatechange = () => { if (["failed", "disconnected", "closed"].includes(conn.connectionState)) setLive(false); };
           await conn.setRemoteDescription(p.sdp);
@@ -49,7 +52,22 @@ export default function RoomGuest({ initialCode, onExit }: { initialCode: string
       join(); timer = window.setInterval(join, 3000); // repete até o anfitrião estar pronto
     });
     return () => { window.clearInterval(timer); pc?.close(); sb.removeChannel(ch); setLive(false); };
-  }, [code]);
+  }, [code, retry]);
+
+  // Mostra o vídeo só quando chegam imagens; tenta ligar o som e retomar a reprodução com o primeiro toque.
+  useEffect(() => {
+    const v = video.current;
+    if (!v) return;
+    setFramed(false); setStale(false);
+    const ok = () => setFramed(true);
+    v.addEventListener("playing", ok); v.addEventListener("resize", ok);
+    const rv = v as HTMLVideoElement & { requestVideoFrameCallback?: (cb: () => void) => void };
+    rv.requestVideoFrameCallback?.(ok);
+    const wake = () => { v.muted = false; if (v.paused) v.play().catch(() => {}); };
+    window.addEventListener("pointerdown", wake, { once: true });
+    const t = window.setTimeout(() => { if (!v.videoWidth) setStale(true); }, 6000);
+    return () => { v.removeEventListener("playing", ok); v.removeEventListener("resize", ok); window.removeEventListener("pointerdown", wake); window.clearTimeout(t); };
+  }, [live, code, retry]);
 
   if (!code) return <main className="pad-page pad-join">
     <button className="icon-btn" onClick={onExit}><ArrowLeft/></button>
@@ -62,5 +80,6 @@ export default function RoomGuest({ initialCode, onExit }: { initialCode: string
   return <PadController initialCode={code} defaultPlayer={2} onShowTv={onExit} onExit={() => setCode("")} top={<div className="room-video">
     <video ref={video} playsInline autoPlay/>
     {!live && <div className="room-wait">A ligar ao anfitrião… O jogo tem de estar aberto no aparelho dele.</div>}
+    {live && !framed && <div className="room-wait">{stale ? <button className="secondary-btn" onClick={() => { setLive(false); setRetry(n => n + 1); }}>Sem imagem. Tocar para ligar de novo</button> : "A receber a imagem…"}</div>}
   </div>}/>;
 }

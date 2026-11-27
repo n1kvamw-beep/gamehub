@@ -30,7 +30,8 @@
     return r;
   };
   window.__ghStream = function () {
-    var c = document.querySelector("canvas");
+    var c = null, best = 0, all = document.querySelectorAll("canvas");
+    for (var i = 0; i < all.length; i++) { var a = all[i].width * all[i].height; if (a > best) { best = a; c = all[i]; } }
     if (!c || !c.captureStream) return null;
     var s = c.captureStream(60);
     if (window.__ghAudio) window.__ghAudio.stream.getAudioTracks().forEach(function (t) { s.addTrack(t); });
